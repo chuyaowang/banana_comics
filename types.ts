@@ -2,6 +2,7 @@
 export type LayoutType = 'GRID' | 'VERTICAL' | 'DYNAMIC' | 'SPLASH';
 export type BubbleStyle = 'STANDARD' | 'SHOUT' | 'THOUGHT';
 export type FontFamily = 'Comic Neue' | 'Bangers' | 'Inter';
+export type Language = 'English' | 'Spanish' | 'French' | 'German' | 'Japanese' | 'Chinese' | 'Hindi' | 'Portuguese';
 
 export interface TextConfig {
   fontFamily: FontFamily;
@@ -15,7 +16,7 @@ export interface ComicPanel {
   description: string;
   caption: string;
   imageUrl?: string; // Base64 or URL
-  status: 'pending' | 'generating' | 'complete' | 'error';
+  status: 'pending' | 'generating' | 'complete' | 'error' | 'updating_prompt';
   textConfig?: Partial<TextConfig>; // Per-panel override
   span?: 1 | 2; // 1 = half width (standard), 2 = full width
 }
@@ -47,4 +48,26 @@ export interface GenerationConfig {
   artStyle: string;
   theme: string;
   apiKey: string;
+}
+
+// JSON Export Structure
+export interface ComicResourcePack {
+  title: string;
+  metadata: {
+    artStyle: string;
+    theme: string;
+    tone: string; // usually same as theme but kept for explicit mapping
+    language: string;
+    date: string;
+  };
+  chapters: {
+    chapterNumber: number;
+    title: string;
+    panels: {
+      index: number;
+      caption: string;
+      visualPrompt: string;
+      imageFileName: string;
+    }[];
+  }[];
 }

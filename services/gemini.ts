@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { ComicScript } from "../types";
+import { ComicScript, Language } from "../types";
 
 // Initialize the client. 
 // Note: We create a new instance per request in the app flow to ensure we have the latest env var if needed, 
@@ -13,7 +13,12 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-export const generateComicScript = async (storyText: string, theme: string = "", chapterCount: number = 3): Promise<ComicScript> => {
+export const generateComicScript = async (
+  storyText: string, 
+  theme: string = "", 
+  chapterCount: number = 3,
+  language: Language = 'English'
+): Promise<ComicScript> => {
   const ai = getClient();
   
   const themePrompt = theme ? `Theme/Tone guidance: "${theme}". ensure the script reflects this mood.` : "";
@@ -26,6 +31,8 @@ export const generateComicScript = async (storyText: string, theme: string = "",
     1. Break the story down into EXACTLY ${chapterCount} pages/chapters.
     2. If the story has distinct sections, assign a "Chapter Title" to the pages.
     3. ${themePrompt}
+    4. LANGUAGE REQUIREMENT: Write ALL captions, dialogue, and titles in ${language}.
+    5. The "description" for the panels (visual prompt) must remain in English for the image generator.
 
     For each panel, provide:
     1. A visual description for an image generator (detailed, describing characters, setting, action).
@@ -62,8 +69,8 @@ export const generateComicScript = async (storyText: string, theme: string = "",
                     items: {
                       type: Type.OBJECT,
                       properties: {
-                        description: { type: Type.STRING, description: "Visual prompt for image generator" },
-                        caption: { type: Type.STRING, description: "Dialogue or narration text (Max 15 words)" }
+                        description: { type: Type.STRING, description: "Visual prompt for image generator (Always English)" },
+                        caption: { type: Type.STRING, description: `Dialogue or narration text (in ${language})` }
                       },
                       required: ["description", "caption"]
                     }
@@ -136,15 +143,49 @@ export const generatePanelSuggestion = async (
     console.error("Suggestion Error:", error);
     return {
       description: "A new scene unfolds...",
-      caption: "Meanwhile..."
+      caption: "..."
     };
+  }
+};
+
+export const updateVisualPrompt = async (
+  currentCaption: string,
+  currentDescription: string,
+  artStyle: string
+): Promise<string> => {
+  const ai = getClient();
+
+  const prompt = `
+    The user is editing a comic book script. They changed the caption for a panel.
+    
+    Art Style: ${artStyle}
+    Old Visual Description: "${currentDescription}"
+    New Caption/Dialogue: "${currentCaption}"
+
+    Task: Update the Visual Description to better match the context of the New Caption.
+    - If the caption implies a specific action (e.g., "Take that!" -> punching), update the description to show that action.
+    - If the caption implies an emotion, update the character's expression.
+    - Keep the core visual elements (characters, setting) consistent with the Old Description unless the caption contradicts them.
+    - Keep it purely visual.
+    
+    Return ONLY the new visual description string.
+  `;
+
+  try {
+     const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+    return response.text?.trim() || currentDescription;
+  } catch (error) {
+    console.warn("Failed to update visual prompt automatically", error);
+    return currentDescription;
   }
 };
 
 export const generatePanelImage = async (panelDescription: string, artStyle: string): Promise<string> => {
   const ai = getClient();
   
-  // Construct a strong prompt for the Nano Banana model
   const fullPrompt = `
     Create a comic book panel image.
     Art Style: ${artStyle}.
@@ -157,11 +198,8 @@ export const generatePanelImage = async (panelDescription: string, artStyle: str
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: fullPrompt,
-      // No specific config needed for standard image gen in nano banana other than model choice
     });
 
-    // Parse response for image data
-    // The guide says: response.candidates[0].content.parts check for inlineData
     const parts = response.candidates?.[0]?.content?.parts;
     if (!parts) throw new Error("No content parts returned");
 
@@ -174,7 +212,6 @@ export const generatePanelImage = async (panelDescription: string, artStyle: str
     throw new Error("No image data found in response");
   } catch (error) {
     console.error("Image Generation Error:", error);
-    // Return a placeholder if generation fails to keep the UI intact (or rethrow to show error)
     throw error;
   }
 };

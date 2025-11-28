@@ -5,19 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BananaComics - AI Comic Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              'comic-title': ['Bangers', 'system-ui'],
+              'comic-text': ['Comic Neue', 'cursive'],
+            }
+          }
+        }
+      }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #0f172a;
-        color: #f8fafc;
-      }
-      .font-comic-title {
-        font-family: 'Bangers', system-ui;
-        letter-spacing: 0.05em;
-      }
-      .font-comic-text {
-        font-family: 'Comic Neue', cursive;
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
@@ -49,7 +53,7 @@
 }
 </script>
 </head>
-  <body>
+  <body class="bg-gray-50 dark:bg-[#0f172a] text-slate-900 dark:text-[#f8fafc] transition-colors duration-300">
     <div id="root"></div>
   </body>
 </html>
