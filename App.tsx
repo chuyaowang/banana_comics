@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { 
   AppStatus, 
@@ -13,9 +14,9 @@ import FileUploader from './components/FileUploader';
 import StyleInput from './components/StyleInput';
 import ComicViewer from './components/ComicViewer';
 import TextCustomizer from './components/TextCustomizer';
-import { generateComicScript, generatePanelImage } from './services/gemini';
+import { generateComicScript, generatePanelImage, generatePanelSuggestion } from './services/gemini';
 import { readFileContent } from './utils/fileHelpers';
-import { Loader2, Wand2, BookOpen, AlertCircle, ArrowRight, PencilRuler } from 'lucide-react';
+import { Loader2, Wand2, BookOpen, AlertCircle, ArrowRight, PencilRuler, ArrowLeft, RefreshCcw } from 'lucide-react';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
@@ -33,7 +34,7 @@ const App: React.FC = () => {
     bubbleStyle: 'STANDARD'
   });
 
-  // Helper to update a specific panel's status/image
+  // Helper to update a specific panel's status/image/content
   const updatePanel = useCallback((pageIndex: number, panelIndex: number, updates: Partial<ComicPanel>) => {
     setScript(prev => {
       if (!prev) return null;
@@ -54,16 +55,137 @@ const App: React.FC = () => {
     });
   }, []);
 
+  // --- New Review Mode Handlers ---
+
+  const handleUpdatePanelText = useCallback((pageIndex: number, panelIndex: number, field: 'description' | 'caption', value: string) => {
+    updatePanel(pageIndex, panelIndex, { [field]: value });
+  }, [updatePanel]);
+
+  const handleAddPanel = useCallback(async (pageIndex: number) => {
+    if (!script) return;
+
+    // 1. Create a placeholder panel
+    const tempId = `p${script.pages[pageIndex].pageNumber}-${Date.now()}`;
+    const newPanel: ComicPanel = {
+      id: tempId,
+      description: "AI is analyzing story context to generate a scene...",
+      caption: "...",
+      status: 'pending',
+      span: 1 // Default to half width
+    };
+
+    // 2. Add placeholder to state immediately
+    setScript(prev => {
+      if (!prev) return null;
+      const newPages = [...prev.pages];
+      newPages[pageIndex] = {
+        ...newPages[pageIndex],
+        panels: [...newPages[pageIndex].panels, newPanel]
+      };
+      return { ...prev, pages: newPages };
+    });
+
+    // 3. Determine Context for AI
+    // We are appending to the end of 'pageIndex'.
+    // Prev context: Last panel of current page (before the one we just added, effectively)
+    // Next context: First panel of next page (if exists)
+    
+    const currentPagePanels = script.pages[pageIndex].panels;
+    const prevPanel = currentPagePanels.length > 0 ? currentPagePanels[currentPagePanels.length - 1] : undefined;
+    
+    const nextPage = script.pages[pageIndex + 1];
+    const nextPanel = nextPage?.panels.length > 0 ? nextPage.panels[0] : undefined;
+
+    // 4. Generate Suggestion
+    try {
+      const suggestion = await generatePanelSuggestion(styleDesc, prevPanel, nextPanel);
+      
+      // 5. Update the placeholder with real content
+      setScript(prev => {
+        if (!prev) return null;
+        const newPages = [...prev.pages];
+        const targetPage = newPages[pageIndex];
+        const updatedPanels = targetPage.panels.map(p => 
+          p.id === tempId ? { ...p, description: suggestion.description, caption: suggestion.caption } : p
+        );
+        newPages[pageIndex] = { ...targetPage, panels: updatedPanels };
+        return { ...prev, pages: newPages };
+      });
+    } catch (e) {
+      console.error("Failed to generate panel suggestion", e);
+      // Fallback update if AI fails
+      setScript(prev => {
+        if (!prev) return null;
+        const newPages = [...prev.pages];
+        const targetPage = newPages[pageIndex];
+        const updatedPanels = targetPage.panels.map(p => 
+          p.id === tempId ? { ...p, description: "Describe your new scene here", caption: "Caption" } : p
+        );
+        newPages[pageIndex] = { ...targetPage, panels: updatedPanels };
+        return { ...prev, pages: newPages };
+      });
+    }
+
+  }, [script, styleDesc]);
+
+  const handleDeletePanel = useCallback((pageIndex: number, panelIndex: number) => {
+    setScript(prev => {
+      if (!prev) return null;
+      const newPages = [...prev.pages];
+      const newPanels = newPages[pageIndex].panels.filter((_, idx) => idx !== panelIndex);
+      newPages[pageIndex] = { ...newPages[pageIndex], panels: newPanels };
+      return { ...prev, pages: newPages };
+    });
+  }, []);
+
+  const handleMovePanel = useCallback((pageIndex: number, panelIndex: number, direction: 'prev' | 'next') => {
+    setScript(prev => {
+      if (!prev) return null;
+      const newPages = [...prev.pages];
+      const panels = [...newPages[pageIndex].panels];
+      
+      const targetIndex = direction === 'prev' ? panelIndex - 1 : panelIndex + 1;
+      
+      // Bounds check
+      if (targetIndex < 0 || targetIndex >= panels.length) return prev;
+
+      // Swap
+      [panels[panelIndex], panels[targetIndex]] = [panels[targetIndex], panels[panelIndex]];
+      
+      newPages[pageIndex] = { ...newPages[pageIndex], panels };
+      return { ...prev, pages: newPages };
+    });
+  }, []);
+
+  const handleResizePanel = useCallback((pageIndex: number, panelIndex: number, span: 1 | 2) => {
+    updatePanel(pageIndex, panelIndex, { span });
+  }, [updatePanel]);
+
+  const handleUpdatePanelConfig = useCallback((pageIndex: number, panelIndex: number, config: Partial<TextConfig> | undefined) => {
+    updatePanel(pageIndex, panelIndex, { textConfig: config });
+  }, [updatePanel]);
+
+  const handleStartOver = () => {
+    if (confirm("Are you sure? This will lose your current script.")) {
+      setStatus(AppStatus.IDLE);
+      setScript(null);
+      setErrorMsg(null);
+    }
+  };
+
+  // --- End New Review Mode Handlers ---
+
   const processComicGeneration = async (currentScript: ComicScript, artStyle: string) => {
     setStatus(AppStatus.GENERATING_IMAGES);
     
-    // We process sequentially to avoid overwhelming rate limits, or in small batches.
     for (let i = 0; i < currentScript.pages.length; i++) {
       const page = currentScript.pages[i];
       for (let j = 0; j < page.panels.length; j++) {
         const panel = page.panels[j];
         
-        // Update to generating
+        // Skip already generated panels unless they failed or are new
+        if (panel.status === 'complete' && panel.imageUrl) continue;
+
         updatePanel(i, j, { status: 'generating' });
         
         try {
@@ -97,7 +219,8 @@ const App: React.FC = () => {
         panels: page.panels.map((panel, idx) => ({
           ...panel,
           id: `p${page.pageNumber}-${idx}`,
-          status: 'pending'
+          status: 'pending',
+          span: 1
         }))
       }));
 
@@ -147,10 +270,18 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
              {status === AppStatus.REVIEW && (
-               <div className="hidden md:flex items-center gap-2 text-yellow-500 text-sm font-bold bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20">
-                 <PencilRuler className="w-4 h-4" />
-                 Layout Editor Active
-               </div>
+               <>
+                 <button 
+                  onClick={handleStartOver}
+                  className="flex items-center gap-2 text-slate-400 hover:text-white text-sm font-semibold transition-colors mr-2"
+                 >
+                   <RefreshCcw className="w-4 h-4" /> Start Over
+                 </button>
+                 <div className="hidden md:flex items-center gap-2 text-yellow-500 text-sm font-bold bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20">
+                   <PencilRuler className="w-4 h-4" />
+                   Editor Active
+                 </div>
+               </>
              )}
              <div className="text-xs font-mono text-slate-500 hidden sm:block">
                Powered by Gemini Nano Banana
@@ -228,14 +359,14 @@ const App: React.FC = () => {
              {status === AppStatus.REVIEW && (
                <div className="sticky top-20 z-40 bg-slate-950/95 backdrop-blur border border-slate-800 p-4 rounded-xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4">
                  <div className="w-full md:w-2/3">
-                    <TextCustomizer config={textConfig} onChange={setTextConfig} />
+                    <TextCustomizer config={textConfig} onChange={(newConfig) => setTextConfig(prev => ({ ...prev, ...newConfig }))} />
                  </div>
-                 <div className="w-full md:w-auto">
+                 <div className="w-full md:w-auto flex gap-2">
                    <button 
                     onClick={handleConfirmLayoutAndGenerate}
                     className="w-full px-6 py-3 bg-green-500 hover:bg-green-400 text-slate-950 font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition-all"
                    >
-                     Generate Images <ArrowRight className="w-4 h-4" />
+                     Generate Comic <ArrowRight className="w-4 h-4" />
                    </button>
                  </div>
                </div>
@@ -247,7 +378,7 @@ const App: React.FC = () => {
                  
                  {status === AppStatus.REVIEW && (
                    <p className="text-center text-slate-400 text-sm">
-                     Review your comic pages below. Hover over a page to change its <span className="text-yellow-500 font-bold">Layout</span>.
+                     Review mode active. <span className="text-yellow-500">Edit text</span>, <span className="text-yellow-500">add panels</span>, or customize <span className="text-yellow-500">bubbles</span> before generating.
                    </p>
                  )}
 
@@ -257,6 +388,12 @@ const App: React.FC = () => {
                   textConfig={textConfig}
                   onRegeneratePanel={handleRegeneratePanel} 
                   onLayoutChange={updatePageLayout}
+                  onUpdatePanelText={handleUpdatePanelText}
+                  onAddPanel={handleAddPanel}
+                  onDeletePanel={handleDeletePanel}
+                  onMovePanel={handleMovePanel}
+                  onResizePanel={handleResizePanel}
+                  onUpdatePanelConfig={handleUpdatePanelConfig}
                  />
                </div>
              )}

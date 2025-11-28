@@ -21,13 +21,18 @@ export const generateComicScript = async (storyText: string, theme: string = "")
   const prompt = `
     You are an expert comic book scriptwriter. 
     Convert the following story text into a structured comic book script.
-    Break the story down into pages (maximum 3 pages for this demo) and panels (2-4 panels per page).
+    Break the story down into pages (maximum 3 pages for this demo).
+    If the story has distinct sections, assign a "Chapter Title" to the pages.
     
     ${themePrompt}
 
     For each panel, provide:
     1. A visual description for an image generator (detailed, describing characters, setting, action).
-    2. A caption or dialogue bubble text.
+    2. A caption or dialogue bubble text. 
+    
+    IMPORTANT CONSTRAINTS:
+    - Keep captions/dialogue VERY CONCISE (maximum 15 words) to fit inside comic bubbles.
+    - Focus on visual storytelling.
     
     Story Text:
     "${storyText.slice(0, 5000)}" 
@@ -50,13 +55,14 @@ export const generateComicScript = async (storyText: string, theme: string = "")
                 type: Type.OBJECT,
                 properties: {
                   pageNumber: { type: Type.INTEGER },
+                  chapterTitle: { type: Type.STRING, description: "Optional title for the chapter this page belongs to" },
                   panels: {
                     type: Type.ARRAY,
                     items: {
                       type: Type.OBJECT,
                       properties: {
                         description: { type: Type.STRING, description: "Visual prompt for image generator" },
-                        caption: { type: Type.STRING, description: "Dialogue or narration text" }
+                        caption: { type: Type.STRING, description: "Dialogue or narration text (Max 15 words)" }
                       },
                       required: ["description", "caption"]
                     }
@@ -78,6 +84,55 @@ export const generateComicScript = async (storyText: string, theme: string = "")
   } catch (error) {
     console.error("Script Generation Error:", error);
     throw error;
+  }
+};
+
+export const generatePanelSuggestion = async (
+  style: string,
+  prevPanel?: { description: string; caption: string },
+  nextPanel?: { description: string; caption: string }
+): Promise<{ description: string; caption: string }> => {
+  const ai = getClient();
+
+  const contextPrompt = `
+    I am editing a comic book script and adding a new panel.
+    Art Style: ${style}
+
+    ${prevPanel ? `Previous Panel Context: "${prevPanel.description}" (Caption: "${prevPanel.caption}")` : "This is the start of the scene."}
+    ${nextPanel ? `Next Panel Context: "${nextPanel.description}" (Caption: "${nextPanel.caption}")` : "This is the end of the scene."}
+
+    Task: Generate a description and caption for a NEW panel that bridges the gap between the Previous and Next panels naturally. 
+    If there is no Next panel, continue the story from the Previous panel.
+    The caption must be short (max 15 words).
+    The description should be visually detailed for an image generator.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: contextPrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            description: { type: Type.STRING },
+            caption: { type: Type.STRING }
+          },
+          required: ["description", "caption"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned from suggestion");
+    return JSON.parse(text) as { description: string; caption: string };
+  } catch (error) {
+    console.error("Suggestion Error:", error);
+    return {
+      description: "A new scene unfolds...",
+      caption: "Meanwhile..."
+    };
   }
 };
 
