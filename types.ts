@@ -1,3 +1,14 @@
+export type LayoutType = 'GRID' | 'VERTICAL' | 'DYNAMIC' | 'SPLASH';
+export type BubbleStyle = 'STANDARD' | 'SHOUT' | 'THOUGHT';
+export type FontFamily = 'Comic Neue' | 'Bangers' | 'Inter';
+
+export interface TextConfig {
+  fontFamily: FontFamily;
+  fontSize: number; // multiplier, e.g. 1.0, 1.2
+  color: string;
+  bubbleStyle: BubbleStyle;
+}
+
 export interface ComicPanel {
   id: string;
   description: string;
@@ -8,11 +19,13 @@ export interface ComicPanel {
 
 export interface ComicPage {
   pageNumber: number;
+  layout: LayoutType;
   panels: ComicPanel[];
 }
 
 export interface ComicScript {
   title: string;
+  theme?: string;
   pages: ComicPage[];
 }
 
@@ -20,6 +33,7 @@ export enum AppStatus {
   IDLE = 'IDLE',
   PARSING = 'PARSING',
   SCRIPTING = 'SCRIPTING',
+  REVIEW = 'REVIEW',
   GENERATING_IMAGES = 'GENERATING_IMAGES',
   COMPLETE = 'COMPLETE',
   ERROR = 'ERROR'
@@ -27,5 +41,6 @@ export enum AppStatus {
 
 export interface GenerationConfig {
   artStyle: string;
-  apiKey: string; // We don't store this, but we use env
+  theme: string;
+  apiKey: string;
 }

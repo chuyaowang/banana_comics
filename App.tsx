@@ -3,21 +3,35 @@ import {
   AppStatus, 
   ComicScript, 
   ComicPage, 
-  ComicPanel 
+  ComicPanel,
+  LayoutType,
+  TextConfig,
+  FontFamily,
+  BubbleStyle
 } from './types';
 import FileUploader from './components/FileUploader';
 import StyleInput from './components/StyleInput';
 import ComicViewer from './components/ComicViewer';
+import TextCustomizer from './components/TextCustomizer';
 import { generateComicScript, generatePanelImage } from './services/gemini';
 import { readFileContent } from './utils/fileHelpers';
-import { Loader2, Wand2, BookOpen, AlertCircle } from 'lucide-react';
+import { Loader2, Wand2, BookOpen, AlertCircle, ArrowRight, PencilRuler } from 'lucide-react';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [file, setFile] = useState<File | null>(null);
   const [styleDesc, setStyleDesc] = useState<string>("");
+  const [themeDesc, setThemeDesc] = useState<string>("");
   const [script, setScript] = useState<ComicScript | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  // Customization State
+  const [textConfig, setTextConfig] = useState<TextConfig>({
+    fontFamily: 'Comic Neue',
+    fontSize: 1.0,
+    color: '#000000',
+    bubbleStyle: 'STANDARD'
+  });
 
   // Helper to update a specific panel's status/image
   const updatePanel = useCallback((pageIndex: number, panelIndex: number, updates: Partial<ComicPanel>) => {
@@ -31,11 +45,19 @@ const App: React.FC = () => {
     });
   }, []);
 
+  const updatePageLayout = useCallback((pageIndex: number, layout: LayoutType) => {
+    setScript(prev => {
+      if (!prev) return null;
+      const newPages = [...prev.pages];
+      newPages[pageIndex] = { ...newPages[pageIndex], layout };
+      return { ...prev, pages: newPages };
+    });
+  }, []);
+
   const processComicGeneration = async (currentScript: ComicScript, artStyle: string) => {
     setStatus(AppStatus.GENERATING_IMAGES);
     
     // We process sequentially to avoid overwhelming rate limits, or in small batches.
-    // Let's do 1 by 1 for safety and clear progress.
     for (let i = 0; i < currentScript.pages.length; i++) {
       const page = currentScript.pages[i];
       for (let j = 0; j < page.panels.length; j++) {
@@ -45,7 +67,6 @@ const App: React.FC = () => {
         updatePanel(i, j, { status: 'generating' });
         
         try {
-          // Add random seed or variation if needed, but here simple prompt
           const imageUrl = await generatePanelImage(panel.description, artStyle);
           updatePanel(i, j, { status: 'complete', imageUrl });
         } catch (error) {
@@ -58,7 +79,7 @@ const App: React.FC = () => {
     setStatus(AppStatus.COMPLETE);
   };
 
-  const handleStart = async () => {
+  const handleStartScripting = async () => {
     if (!file || !styleDesc) return;
     setErrorMsg(null);
 
@@ -67,11 +88,12 @@ const App: React.FC = () => {
       const text = await readFileContent(file);
       
       setStatus(AppStatus.SCRIPTING);
-      const generatedScript = await generateComicScript(text);
+      const generatedScript = await generateComicScript(text, themeDesc);
       
-      // Initialize panels with IDs and status
+      // Initialize panels with IDs, status, and default layout
       const initializedPages: ComicPage[] = generatedScript.pages.map(page => ({
         ...page,
+        layout: 'DYNAMIC', // Default layout
         panels: page.panels.map((panel, idx) => ({
           ...panel,
           id: `p${page.pageNumber}-${idx}`,
@@ -85,15 +107,18 @@ const App: React.FC = () => {
       };
 
       setScript(initializedScript);
-      
-      // Start image generation
-      await processComicGeneration(initializedScript, styleDesc);
+      setStatus(AppStatus.REVIEW); // Pause for layout review
       
     } catch (err) {
       console.error(err);
       setErrorMsg(err instanceof Error ? err.message : "An unexpected error occurred");
       setStatus(AppStatus.ERROR);
     }
+  };
+
+  const handleConfirmLayoutAndGenerate = async () => {
+    if (!script) return;
+    await processComicGeneration(script, styleDesc);
   };
 
   const handleRegeneratePanel = async (pageIndex: number, panelIndex: number) => {
@@ -114,14 +139,22 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.reload()}>
             <BookOpen className="w-8 h-8 text-yellow-500" />
             <h1 className="text-2xl font-comic-title text-white tracking-wide">
               Banana<span className="text-yellow-500">Comics</span>
             </h1>
           </div>
-          <div className="text-xs font-mono text-slate-500">
-             Powered by Gemini Nano Banana
+          <div className="flex items-center gap-4">
+             {status === AppStatus.REVIEW && (
+               <div className="hidden md:flex items-center gap-2 text-yellow-500 text-sm font-bold bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20">
+                 <PencilRuler className="w-4 h-4" />
+                 Layout Editor Active
+               </div>
+             )}
+             <div className="text-xs font-mono text-slate-500 hidden sm:block">
+               Powered by Gemini Nano Banana
+             </div>
           </div>
         </div>
       </header>
@@ -151,9 +184,14 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-black text-xs font-bold">2</span>
-                  Choose Style
+                  Configuration
                 </h3>
-                <StyleInput value={styleDesc} onChange={setStyleDesc} />
+                <StyleInput 
+                  styleValue={styleDesc} 
+                  onStyleChange={setStyleDesc}
+                  themeValue={themeDesc}
+                  onThemeChange={setThemeDesc}
+                />
               </div>
 
               {errorMsg && (
@@ -164,18 +202,18 @@ const App: React.FC = () => {
               )}
 
               <button
-                onClick={handleStart}
+                onClick={handleStartScripting}
                 disabled={!file || !styleDesc}
                 className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold text-lg rounded-xl transition-all transform hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2"
               >
                 <Wand2 className="w-5 h-5" />
-                Generate Comic
+                Start Magic
               </button>
             </div>
           </div>
         ) : (
           <div className="space-y-8">
-             {/* Progress Header */}
+             {/* Progress / Status Header */}
              {(status === AppStatus.PARSING || status === AppStatus.SCRIPTING) && (
                <div className="flex flex-col items-center justify-center py-20 space-y-6">
                  <Loader2 className="w-16 h-16 text-yellow-500 animate-spin" />
@@ -186,10 +224,40 @@ const App: React.FC = () => {
                </div>
              )}
 
-             {/* Viewer */}
-             {(status === AppStatus.GENERATING_IMAGES || status === AppStatus.COMPLETE) && script && (
-               <div className="animate-in fade-in duration-500 slide-in-from-bottom-10">
-                 <ComicViewer script={script} onRegeneratePanel={handleRegeneratePanel} />
+             {/* Review Mode Control Bar */}
+             {status === AppStatus.REVIEW && (
+               <div className="sticky top-20 z-40 bg-slate-950/95 backdrop-blur border border-slate-800 p-4 rounded-xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4">
+                 <div className="w-full md:w-2/3">
+                    <TextCustomizer config={textConfig} onChange={setTextConfig} />
+                 </div>
+                 <div className="w-full md:w-auto">
+                   <button 
+                    onClick={handleConfirmLayoutAndGenerate}
+                    className="w-full px-6 py-3 bg-green-500 hover:bg-green-400 text-slate-950 font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition-all"
+                   >
+                     Generate Images <ArrowRight className="w-4 h-4" />
+                   </button>
+                 </div>
+               </div>
+             )}
+
+             {/* Viewer for Review & Complete States */}
+             {(status === AppStatus.REVIEW || status === AppStatus.GENERATING_IMAGES || status === AppStatus.COMPLETE) && script && (
+               <div className="animate-in fade-in duration-500 slide-in-from-bottom-10 space-y-4">
+                 
+                 {status === AppStatus.REVIEW && (
+                   <p className="text-center text-slate-400 text-sm">
+                     Review your comic pages below. Hover over a page to change its <span className="text-yellow-500 font-bold">Layout</span>.
+                   </p>
+                 )}
+
+                 <ComicViewer 
+                  script={script} 
+                  status={status}
+                  textConfig={textConfig}
+                  onRegeneratePanel={handleRegeneratePanel} 
+                  onLayoutChange={updatePageLayout}
+                 />
                </div>
              )}
           </div>

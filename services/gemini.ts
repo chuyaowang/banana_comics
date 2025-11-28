@@ -13,20 +13,25 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-export const generateComicScript = async (storyText: string): Promise<ComicScript> => {
+export const generateComicScript = async (storyText: string, theme: string = ""): Promise<ComicScript> => {
   const ai = getClient();
   
+  const themePrompt = theme ? `Theme/Tone guidance: "${theme}". ensure the script reflects this mood.` : "";
+
   const prompt = `
     You are an expert comic book scriptwriter. 
     Convert the following story text into a structured comic book script.
     Break the story down into pages (maximum 3 pages for this demo) and panels (2-4 panels per page).
+    
+    ${themePrompt}
+
     For each panel, provide:
     1. A visual description for an image generator (detailed, describing characters, setting, action).
     2. A caption or dialogue bubble text.
     
     Story Text:
     "${storyText.slice(0, 5000)}" 
-    // Truncating to 5000 chars to avoid token limits for this demo if user uploads a novel.
+    // Truncating to 5000 chars to avoid token limits.
   `;
 
   try {
@@ -110,7 +115,6 @@ export const generatePanelImage = async (panelDescription: string, artStyle: str
   } catch (error) {
     console.error("Image Generation Error:", error);
     // Return a placeholder if generation fails to keep the UI intact (or rethrow to show error)
-    // Rethrowing allows the UI to mark the panel as failed
     throw error;
   }
 };
