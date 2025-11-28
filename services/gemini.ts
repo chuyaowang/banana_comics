@@ -21,7 +21,7 @@ export const generateComicScript = async (
 ): Promise<ComicScript> => {
   const ai = getClient();
   
-  const themePrompt = theme ? `Theme/Tone guidance: "${theme}". ensure the script reflects this mood.` : "";
+  const themePrompt = theme ? `Theme/Tone guidance: "${theme}".` : "";
 
   const prompt = `
     You are an expert comic book scriptwriter. 
@@ -30,7 +30,7 @@ export const generateComicScript = async (
     Constraints:
     1. Break the story down into EXACTLY ${chapterCount} pages/chapters.
     2. If the story has distinct sections, assign a "Chapter Title" to the pages.
-    3. ${themePrompt}
+    3. ${themePrompt} CRITICAL: You must extract visual setting details (time period, location, clothing style, atmosphere) from this theme and EXPLICITLY REPEAT them in EVERY panel's visual description to ensure consistency (e.g., if theme is "Ancient China", every panel description must mention "ancient chinese clothing", "ancient architecture").
     4. LANGUAGE REQUIREMENT: Write ALL captions, dialogue, and titles in ${language}.
     5. The "description" for the panels (visual prompt) must remain in English for the image generator.
 

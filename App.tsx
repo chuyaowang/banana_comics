@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { 
   AppStatus, 
@@ -38,9 +39,27 @@ const App: React.FC = () => {
     }
   }, [darkMode]);
 
+  // Update default font when language changes
+  useEffect(() => {
+    if (language === 'Chinese') {
+      setTextConfig(prev => ({ 
+        ...prev, 
+        fontFamily: 'ZCOOL QingKe HuangYou',
+        titleFontFamily: 'ZCOOL QingKe HuangYou'
+      }));
+    } else {
+      setTextConfig(prev => ({ 
+        ...prev, 
+        fontFamily: 'Comic Neue',
+        titleFontFamily: 'Bangers'
+      }));
+    }
+  }, [language]);
+
   // Customization State
   const [textConfig, setTextConfig] = useState<TextConfig>({
     fontFamily: 'Comic Neue',
+    titleFontFamily: 'Bangers',
     fontSize: 1.0,
     color: '#000000',
     bubbleStyle: 'STANDARD'
@@ -77,9 +96,9 @@ const App: React.FC = () => {
     if (!script) return;
     const panel = script.pages[pageIndex].panels[panelIndex];
     
-    // Optimistic check: if caption is empty or same as something trivial, maybe skip?
-    // But user might want to clear it.
-    
+    // Check if caption actually changed. If not, do nothing.
+    if (panel.caption === caption) return;
+
     // Set status to indicate we are fetching a new prompt
     updatePanel(pageIndex, panelIndex, { status: 'updating_prompt' });
     
@@ -196,11 +215,13 @@ const App: React.FC = () => {
   }, [updatePanel]);
 
   const handleStartOver = () => {
-    if (confirm("Are you sure? This will lose your current script.")) {
-      setStatus(AppStatus.IDLE);
-      setScript(null);
-      setErrorMsg(null);
-    }
+    // We removed the confirm dialog for now to ensure the button action always fires reliably
+    // in case the browser blocks repeat confirmations or the UI was unresponsive.
+    setStatus(AppStatus.IDLE);
+    setScript(null);
+    setErrorMsg(null);
+    setFile(null);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
   // --- End New Review Mode Handlers ---
@@ -256,6 +277,7 @@ const App: React.FC = () => {
 
       const initializedScript: ComicScript = {
         ...generatedScript,
+        theme: themeDesc, // Explicitly save theme to script
         pages: initializedPages
       };
 
@@ -292,26 +314,27 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.reload()}>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={handleStartOver}>
             <BookOpen className="w-8 h-8 text-yellow-500" />
             <h1 className="text-2xl font-comic-title text-slate-900 dark:text-white tracking-wide">
               Banana<span className="text-yellow-500">Comics</span>
             </h1>
           </div>
           <div className="flex items-center gap-4">
+             {(status === AppStatus.REVIEW || status === AppStatus.COMPLETE) && (
+               <button 
+                onClick={handleStartOver}
+                className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm font-semibold transition-colors mr-2 cursor-pointer z-50"
+               >
+                 <RefreshCcw className="w-4 h-4" /> Start Over
+               </button>
+             )}
+
              {status === AppStatus.REVIEW && (
-               <>
-                 <button 
-                  onClick={handleStartOver}
-                  className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm font-semibold transition-colors mr-2"
-                 >
-                   <RefreshCcw className="w-4 h-4" /> Start Over
-                 </button>
                  <div className="hidden md:flex items-center gap-2 text-yellow-600 dark:text-yellow-500 text-sm font-bold bg-yellow-100 dark:bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-200 dark:border-yellow-500/20">
                    <PencilRuler className="w-4 h-4" />
                    Editor Active
                  </div>
-               </>
              )}
              
              {/* Dark Mode Toggle */}
@@ -403,7 +426,11 @@ const App: React.FC = () => {
              {status === AppStatus.REVIEW && (
                <div className="sticky top-20 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4">
                  <div className="w-full md:w-2/3">
-                    <TextCustomizer config={textConfig} onChange={(newConfig) => setTextConfig(prev => ({ ...prev, ...newConfig }))} />
+                    <TextCustomizer 
+                      config={textConfig} 
+                      onChange={(newConfig) => setTextConfig(prev => ({ ...prev, ...newConfig }))} 
+                      language={language}
+                    />
                  </div>
                  <div className="w-full md:w-auto flex gap-2">
                    <button 
@@ -441,6 +468,7 @@ const App: React.FC = () => {
                   onResizePanel={handleResizePanel}
                   onUpdatePanelConfig={handleUpdatePanelConfig}
                   onCaptionBlur={handleCaptionBlur}
+                  language={language}
                  />
                </div>
              )}

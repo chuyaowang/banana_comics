@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
-import { ComicScript, ComicPage, ComicPanel, TextConfig, LayoutType, AppStatus, ComicResourcePack } from '../types';
-import { Download, Loader2, RefreshCw, Plus, Trash2, Settings2, GripVertical, ChevronLeft, ChevronRight, Maximize2, Minimize2, Eye, EyeOff, Package } from 'lucide-react';
+import { ComicScript, ComicPage, ComicPanel, TextConfig, LayoutType, AppStatus, ComicResourcePack, Language } from '../types';
+import { Download, Loader2, RefreshCw, Plus, Trash2, Settings2, GripVertical, ChevronLeft, ChevronRight, Maximize2, Minimize2, Eye, EyeOff, Package, PenLine, Check, X } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import JSZip from 'jszip';
@@ -13,6 +14,7 @@ interface ComicViewerProps {
   textConfig: TextConfig;
   originalFile: File | null;
   artStyle: string;
+  language: Language; // New prop to pass language down
   onRegeneratePanel?: (pageIndex: number, panelIndex: number) => void;
   onLayoutChange: (pageIndex: number, layout: LayoutType) => void;
   onUpdatePanelText?: (pageIndex: number, panelIndex: number, field: 'description' | 'caption', value: string) => void;
@@ -30,6 +32,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
   textConfig: globalTextConfig,
   originalFile,
   artStyle,
+  language,
   onRegeneratePanel,
   onLayoutChange,
   onUpdatePanelText,
@@ -44,6 +47,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
   const [isExporting, setIsExporting] = React.useState(false);
   const [isZipping, setIsZipping] = React.useState(false);
   const [activeSettingsPanel, setActiveSettingsPanel] = useState<string | null>(null);
+  const [editingPanelId, setEditingPanelId] = useState<string | null>(null);
   const [showCaptions, setShowCaptions] = useState(true);
 
   const handleDownloadPDF = async () => {
@@ -52,8 +56,6 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
     
     try {
       const pages = comicRef.current.querySelectorAll('.comic-page-export');
-      
-      // We will create the PDF after we process the first page so we know dimensions
       let pdf: jsPDF | null = null;
 
       for (let i = 0; i < pages.length; i++) {
@@ -63,27 +65,19 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
         
         const imgWidthPx = canvas.width;
         const imgHeightPx = canvas.height;
-        
-        // Convert px to mm (approx 96 DPI in browsers usually, but jspdf uses a different metric potentially)
-        // Standard approach: fix width to A4 width (210mm) minus margins (e.g. 200mm)
         const pdfPageWidthMM = 210;
         const marginMM = 10;
         const contentWidthMM = pdfPageWidthMM - (marginMM * 2);
-        
         const contentHeightMM = (imgHeightPx * contentWidthMM) / imgWidthPx;
-        
-        // Custom page height to fit content exactly + vertical margins
         const pdfPageHeightMM = contentHeightMM + (marginMM * 2);
 
         if (i === 0) {
-           // First page initializes the PDF
            pdf = new jsPDF({
              orientation: 'p',
              unit: 'mm',
              format: [pdfPageWidthMM, pdfPageHeightMM]
            });
         } else {
-           // Subsequent pages add a new page with specific dimensions
            pdf?.addPage([pdfPageWidthMM, pdfPageHeightMM]);
         }
         
@@ -106,14 +100,12 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
     try {
       const zip = new JSZip();
       
-      // 1. Create JSON Documentation
       const resourceData: ComicResourcePack = {
         title: script.title,
         metadata: {
           artStyle: artStyle,
-          theme: script.theme || "None",
-          tone: script.theme || "None",
-          language: "English", // In a real app, pass this down if multiple supported
+          themeAndTone: script.theme || "None", // Consolidated field
+          language: language, 
           date: new Date().toISOString()
         },
         chapters: script.pages.map(page => ({
@@ -130,12 +122,10 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
 
       zip.file("comic_data.json", JSON.stringify(resourceData, null, 2));
 
-      // 2. Add Original File
       if (originalFile) {
         zip.file(`original_source_${originalFile.name}`, originalFile);
       }
       
-      // 3. Add Images
       const imgFolder = zip.folder("images");
       script.pages.forEach((page) => {
         page.panels.forEach((panel, idx) => {
@@ -146,10 +136,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
         });
       });
 
-      // 4. Generate Zip
       const content = await zip.generateAsync({ type: "blob" });
-      
-      // 5. Trigger Download
       const url = window.URL.createObjectURL(content);
       const a = document.createElement("a");
       a.href = url;
@@ -184,7 +171,10 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto space-y-8 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-center w-full px-4 gap-4">
-        <h2 className="text-4xl font-comic-title text-yellow-500 tracking-wider uppercase drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)]">
+        <h2 
+          className="text-4xl text-yellow-500 tracking-wider uppercase drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)]"
+          style={{ fontFamily: globalTextConfig.titleFontFamily || 'Bangers' }}
+        >
           {script.title}
         </h2>
         
@@ -227,7 +217,6 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
           return (
             <div key={pageIndex} className="relative group">
               
-              {/* Layout Editor Toolbar */}
               {isReviewMode && (
                 <div className="absolute -top-3 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                    <LayoutSelector 
@@ -241,33 +230,36 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                 className="comic-page-export bg-white p-6 shadow-2xl rounded-sm"
                 style={{ minHeight: '1000px' }} 
               >
-                {/* Comic Title on PDF/Export (Only first page usually, but added here for context if needed or handled by PDF export manually) */}
-                {/* Note: The PDF function adds title manually to top. */}
-
-                {/* Chapter Title */}
                 {page.chapterTitle && (
                   <div className="mb-6 text-center border-b-2 border-black pb-2">
-                    <h3 className="font-comic-title text-3xl text-black uppercase tracking-widest">{page.chapterTitle}</h3>
+                    <h3 
+                      className="text-3xl text-black uppercase tracking-widest"
+                      style={{ fontFamily: globalTextConfig.titleFontFamily || 'Bangers' }}
+                    >
+                      {page.chapterTitle}
+                    </h3>
                   </div>
                 )}
 
                 <div className="mb-4 flex justify-between items-end border-b-4 border-black pb-2">
-                  <span className="font-comic-title text-2xl text-black uppercase">Page {page.pageNumber}</span>
+                  <span 
+                    className="text-2xl text-black uppercase"
+                    style={{ fontFamily: globalTextConfig.titleFontFamily || 'Bangers' }}
+                  >
+                    Page {page.pageNumber}
+                  </span>
                   <span className="font-comic-text text-sm text-gray-500">BananaComics AI</span>
                 </div>
 
                 <div className={`grid gap-4 h-full ${gridClass}`}>
                   {page.panels.map((panel, panelIndex) => {
-                    // Merge local override with global config
                     const effectiveConfig = { ...globalTextConfig, ...panel.textConfig };
-                    
                     const isResizable = page.layout === 'GRID' || page.layout === 'DYNAMIC';
                     const currentSpan = panel.span || 1;
                     
                     let spanClass = "col-span-1";
                     if (isResizable && currentSpan === 2) spanClass = "col-span-2";
                     
-                    // Auto-span for last odd item if Dynamic
                     if (page.layout === 'DYNAMIC' && !panel.span) {
                        const isFullWidth = (panelIndex % 3 === 2) || (page.panels.length % 2 !== 0 && panelIndex === page.panels.length - 1);
                        if (isFullWidth) spanClass = "col-span-2";
@@ -275,6 +267,8 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
 
                     if (page.layout === 'SPLASH') spanClass = "col-span-1 h-full";
 
+                    const isEditing = editingPanelId === panel.id;
+                    const canEdit = status === AppStatus.COMPLETE;
 
                     return (
                       <div 
@@ -282,27 +276,20 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                         className={`relative border-4 border-black bg-slate-100 flex flex-col ${spanClass} hover:border-yellow-500 transition-colors group/panel`}
                         style={{ minHeight: page.layout === 'SPLASH' ? '800px' : '300px' }}
                       >
-                         {/* Panel Edit Tools (Review Mode) */}
+                         {/* Review Mode Toolbar */}
                          {isReviewMode && (
                            <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover/panel:opacity-100 transition-opacity bg-slate-900/90 rounded p-1 backdrop-blur-sm">
-                             
-                             {/* Move Previous */}
                              {onMovePanel && panelIndex > 0 && (
                                <button onClick={() => onMovePanel(pageIndex, panelIndex, 'prev')} className="p-1 text-slate-400 hover:text-white" title="Move Back">
                                  <ChevronLeft className="w-3 h-3" />
                                </button>
                              )}
-
-                             {/* Move Next */}
                              {onMovePanel && panelIndex < page.panels.length - 1 && (
                                <button onClick={() => onMovePanel(pageIndex, panelIndex, 'next')} className="p-1 text-slate-400 hover:text-white" title="Move Forward">
                                  <ChevronRight className="w-3 h-3" />
                                </button>
                              )}
-
                              <div className="w-px bg-slate-700 mx-1"></div>
-
-                             {/* Resize */}
                              {isResizable && onResizePanel && (
                                <button 
                                  onClick={() => onResizePanel(pageIndex, panelIndex, currentSpan === 2 ? 1 : 2)}
@@ -312,8 +299,6 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                  {currentSpan === 2 ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
                                </button>
                              )}
-
-                             {/* Settings Toggle */}
                              <div className="relative">
                                <button 
                                  onClick={() => setActiveSettingsPanel(activeSettingsPanel === panel.id ? null : panel.id)}
@@ -329,14 +314,12 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                      onChange={(newConf) => onUpdatePanelConfig(pageIndex, panelIndex, newConf)} 
                                      compact={true}
                                      onReset={() => onUpdatePanelConfig(pageIndex, panelIndex, undefined)}
+                                     language={language}
                                    />
                                  </div>
                                )}
                              </div>
-                             
                              <div className="w-px bg-slate-700 mx-1"></div>
-
-                             {/* Delete Button */}
                              {onDeletePanel && page.panels.length > 1 && (
                                <button 
                                  onClick={() => {
@@ -351,6 +334,18 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                            </div>
                          )}
 
+                        {/* Post-Gen Edit Toggle */}
+                        {canEdit && !isEditing && (
+                          <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/panel:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => setEditingPanelId(panel.id)}
+                              className="p-2 bg-white/50 hover:bg-white text-slate-800 rounded-full shadow-sm backdrop-blur-sm transition-all"
+                              title="Edit Panel Content"
+                            >
+                              <PenLine className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
 
                         {/* Image Area */}
                         <div className="flex-grow relative bg-slate-200 overflow-hidden flex items-center justify-center">
@@ -358,7 +353,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                             <img 
                               src={panel.imageUrl} 
                               alt={panel.description} 
-                              className="w-full h-full object-cover"
+                              className={`w-full h-full object-cover ${isEditing ? 'opacity-50 blur-sm' : ''}`}
                             />
                           ) : panel.status === 'error' ? (
                             <div className="text-red-500 flex flex-col items-center p-4 text-center">
@@ -399,14 +394,76 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                    />
                                 </div>
                               ) : (
-                                !isReviewMode && <p className="text-xs font-mono mt-2 opacity-60 max-w-[90%]">{panel.description}</p>
+                                !isReviewMode && !isEditing && <p className="text-xs font-mono mt-2 opacity-60 max-w-[90%]">{panel.description}</p>
                               )}
+                            </div>
+                          )}
+
+                          {/* Post-Gen Edit Mode Overlay */}
+                          {isEditing && (
+                            <div className="absolute inset-0 z-30 flex flex-col p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
+                              <div className="flex justify-between items-center mb-4">
+                                <h4 className="text-white text-sm font-bold uppercase">Edit Panel</h4>
+                                <button 
+                                  onClick={() => setEditingPanelId(null)}
+                                  className="text-slate-400 hover:text-white"
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
+                              </div>
+                              
+                              {onUpdatePanelConfig && (
+                                <div className="mb-4">
+                                  <TextCustomizer 
+                                    config={effectiveConfig} 
+                                    onChange={(newConf) => onUpdatePanelConfig(pageIndex, panelIndex, newConf)} 
+                                    compact={true}
+                                    onReset={() => onUpdatePanelConfig(pageIndex, panelIndex, undefined)}
+                                    language={language} // Pass language here for correct fonts
+                                  />
+                                </div>
+                              )}
+
+                              <div className="space-y-4">
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-400 mb-1">Visual Prompt</label>
+                                  <textarea
+                                    className="w-full h-24 bg-slate-800 border border-slate-700 rounded p-2 text-xs text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500"
+                                    value={panel.description}
+                                    onChange={(e) => onUpdatePanelText && onUpdatePanelText(pageIndex, panelIndex, 'description', e.target.value)}
+                                  />
+                                  {onRegeneratePanel && (
+                                    <button 
+                                      onClick={() => onRegeneratePanel(pageIndex, panelIndex)}
+                                      className="mt-2 w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded flex items-center justify-center gap-2"
+                                    >
+                                      <RefreshCw className="w-3 h-3" /> Regenerate Image
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-400 mb-1">Caption</label>
+                                  <textarea
+                                    className="w-full h-20 bg-slate-800 border border-slate-700 rounded p-2 text-xs text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500"
+                                    value={panel.caption}
+                                    onChange={(e) => onUpdatePanelText && onUpdatePanelText(pageIndex, panelIndex, 'caption', e.target.value)}
+                                  />
+                                </div>
+
+                                <button 
+                                  onClick={() => setEditingPanelId(null)}
+                                  className="w-full py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded flex items-center justify-center gap-2"
+                                >
+                                  <Check className="w-3 h-3" /> Done
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
 
                         {/* Caption Box */}
-                        {showCaptions && panel.caption && (
+                        {(showCaptions || isEditing) && panel.caption && !isEditing && (
                           <div 
                             className={`absolute bottom-6 left-6 right-6 z-10 ${getBubbleStyles(effectiveConfig)}`}
                             style={effectiveConfig.bubbleStyle === 'SHOUT' ? { transform: 'rotate(-1deg)' } : {}}
@@ -443,7 +500,6 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                   })}
                 </div>
                 
-                {/* Add Panel Button */}
                 {isReviewMode && onAddPanel && (
                   <button 
                     onClick={() => onAddPanel(pageIndex)}

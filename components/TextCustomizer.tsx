@@ -1,20 +1,17 @@
+
 import React from 'react';
-import { Type, MessageSquare, Plus, Minus, Palette, XCircle } from 'lucide-react';
-import { TextConfig, FontFamily, BubbleStyle } from '../types';
+import { Type, MessageSquare, Plus, Minus, Palette, XCircle, Heading } from 'lucide-react';
+import { TextConfig, FontFamily, BubbleStyle, Language } from '../types';
 
 interface TextCustomizerProps {
   config: Partial<TextConfig>;
   onChange: (config: Partial<TextConfig>) => void;
   compact?: boolean;
   onReset?: () => void;
+  language?: Language;
 }
 
-const TextCustomizer: React.FC<TextCustomizerProps> = ({ config, onChange, compact = false, onReset }) => {
-  
-  // Defaults for display if undefined in partial config (though logic usually merges before passing)
-  // However, for the UI state, we want to show what's active.
-  // We assume the parent component passes the *effective* config or the specific override config.
-  // If we are editing overrides, we might receive undefined values. 
+const TextCustomizer: React.FC<TextCustomizerProps> = ({ config, onChange, compact = false, onReset, language }) => {
   
   const updateConfig = (updates: Partial<TextConfig>) => {
     onChange({ ...config, ...updates });
@@ -23,6 +20,28 @@ const TextCustomizer: React.FC<TextCustomizerProps> = ({ config, onChange, compa
   const containerClass = compact 
     ? "w-full p-3 bg-slate-800 rounded-lg flex flex-col gap-3 shadow-xl border border-slate-700 z-50"
     : "w-full bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-wrap gap-6 items-center justify-between shadow-lg";
+
+  // Determine available fonts based on language
+  const isChinese = language === 'Chinese';
+  
+  const FontOptions = () => (
+    <>
+      {isChinese ? (
+        <>
+          <option value="ZCOOL QingKe HuangYou">QingKe HuangYou (Comic)</option>
+          <option value="Ma Shan Zheng">Ma Shan Zheng (Brush)</option>
+          <option value="Zhi Mang Xing">Zhi Mang Xing (Calligraphy)</option>
+          <option value="Noto Sans SC">Noto Sans (Standard)</option>
+        </>
+      ) : (
+        <>
+          <option value="Comic Neue">Comic Neue</option>
+          <option value="Bangers">Bangers</option>
+          <option value="Inter">Standard</option>
+        </>
+      )}
+    </>
+  );
 
   return (
     <div className={containerClass}>
@@ -39,18 +58,33 @@ const TextCustomizer: React.FC<TextCustomizerProps> = ({ config, onChange, compa
         </div>
       )}
 
-      {/* Font Family */}
+      {/* Global Title Font Selector (Only in Full Mode) */}
+      {!compact && (
+        <div className="flex items-center gap-3 border-r border-slate-700 pr-6 mr-2">
+          <Heading className="w-4 h-4 text-yellow-500" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">Title Font</span>
+            <select
+              value={config.titleFontFamily || (isChinese ? 'ZCOOL QingKe HuangYou' : 'Bangers')}
+              onChange={(e) => updateConfig({ titleFontFamily: e.target.value as FontFamily })}
+              className="bg-transparent text-white text-xs border-none focus:ring-0 p-0 cursor-pointer hover:text-yellow-400"
+            >
+              <FontOptions />
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Bubble Font Family */}
       <div className={`flex items-center ${compact ? 'justify-between' : 'gap-3'}`}>
         {!compact && <Type className="w-4 h-4 text-gray-400" />}
         {compact && <span className="text-xs text-gray-400">Font</span>}
         <select
-          value={config.fontFamily || 'Comic Neue'}
+          value={config.fontFamily || (isChinese ? 'ZCOOL QingKe HuangYou' : 'Comic Neue')}
           onChange={(e) => updateConfig({ fontFamily: e.target.value as FontFamily })}
-          className="bg-slate-700 border border-slate-600 text-white text-xs rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block p-1.5"
+          className="bg-slate-700 border border-slate-600 text-white text-xs rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block p-1.5 min-w-[120px]"
         >
-          <option value="Comic Neue">Comic Neue</option>
-          <option value="Bangers">Bangers</option>
-          <option value="Inter">Standard</option>
+          <FontOptions />
         </select>
       </div>
 

@@ -1,11 +1,12 @@
 
 export type LayoutType = 'GRID' | 'VERTICAL' | 'DYNAMIC' | 'SPLASH';
 export type BubbleStyle = 'STANDARD' | 'SHOUT' | 'THOUGHT';
-export type FontFamily = 'Comic Neue' | 'Bangers' | 'Inter';
+export type FontFamily = 'Comic Neue' | 'Bangers' | 'Inter' | 'ZCOOL QingKe HuangYou' | 'Ma Shan Zheng' | 'Zhi Mang Xing' | 'Noto Sans SC';
 export type Language = 'English' | 'Spanish' | 'French' | 'German' | 'Japanese' | 'Chinese' | 'Hindi' | 'Portuguese';
 
 export interface TextConfig {
   fontFamily: FontFamily;
+  titleFontFamily: FontFamily; // New: Separate font for titles
   fontSize: number; // multiplier, e.g. 1.0, 1.2
   color: string;
   bubbleStyle: BubbleStyle;
@@ -55,8 +56,7 @@ export interface ComicResourcePack {
   title: string;
   metadata: {
     artStyle: string;
-    theme: string;
-    tone: string; // usually same as theme but kept for explicit mapping
+    themeAndTone: string; // Combined field
     language: string;
     date: string;
   };
