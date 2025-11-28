@@ -13,7 +13,7 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-export const generateComicScript = async (storyText: string, theme: string = ""): Promise<ComicScript> => {
+export const generateComicScript = async (storyText: string, theme: string = "", chapterCount: number = 3): Promise<ComicScript> => {
   const ai = getClient();
   
   const themePrompt = theme ? `Theme/Tone guidance: "${theme}". ensure the script reflects this mood.` : "";
@@ -21,10 +21,11 @@ export const generateComicScript = async (storyText: string, theme: string = "")
   const prompt = `
     You are an expert comic book scriptwriter. 
     Convert the following story text into a structured comic book script.
-    Break the story down into pages (maximum 3 pages for this demo).
-    If the story has distinct sections, assign a "Chapter Title" to the pages.
     
-    ${themePrompt}
+    Constraints:
+    1. Break the story down into EXACTLY ${chapterCount} pages/chapters.
+    2. If the story has distinct sections, assign a "Chapter Title" to the pages.
+    3. ${themePrompt}
 
     For each panel, provide:
     1. A visual description for an image generator (detailed, describing characters, setting, action).
@@ -35,8 +36,8 @@ export const generateComicScript = async (storyText: string, theme: string = "")
     - Focus on visual storytelling.
     
     Story Text:
-    "${storyText.slice(0, 5000)}" 
-    // Truncating to 5000 chars to avoid token limits.
+    "${storyText.slice(0, 8000)}" 
+    // Truncating to 8000 chars to avoid token limits.
   `;
 
   try {
@@ -55,7 +56,7 @@ export const generateComicScript = async (storyText: string, theme: string = "")
                 type: Type.OBJECT,
                 properties: {
                   pageNumber: { type: Type.INTEGER },
-                  chapterTitle: { type: Type.STRING, description: "Optional title for the chapter this page belongs to" },
+                  chapterTitle: { type: Type.STRING, description: "Title for the chapter/page" },
                   panels: {
                     type: Type.ARRAY,
                     items: {
@@ -89,6 +90,7 @@ export const generateComicScript = async (storyText: string, theme: string = "")
 
 export const generatePanelSuggestion = async (
   style: string,
+  chapterContext: string,
   prevPanel?: { description: string; caption: string },
   nextPanel?: { description: string; caption: string }
 ): Promise<{ description: string; caption: string }> => {
@@ -97,12 +99,15 @@ export const generatePanelSuggestion = async (
   const contextPrompt = `
     I am editing a comic book script and adding a new panel.
     Art Style: ${style}
+    Current Chapter Context: "${chapterContext}".
+    
+    ${prevPanel ? `Previous Panel: "${prevPanel.description}" (Caption: "${prevPanel.caption}")` : "This is the start of the scene."}
+    ${nextPanel ? `Next Panel: "${nextPanel.description}" (Caption: "${nextPanel.caption}")` : "This is the end of the scene."}
 
-    ${prevPanel ? `Previous Panel Context: "${prevPanel.description}" (Caption: "${prevPanel.caption}")` : "This is the start of the scene."}
-    ${nextPanel ? `Next Panel Context: "${nextPanel.description}" (Caption: "${nextPanel.caption}")` : "This is the end of the scene."}
-
-    Task: Generate a description and caption for a NEW panel that bridges the gap between the Previous and Next panels naturally. 
-    If there is no Next panel, continue the story from the Previous panel.
+    Task: Generate a description and caption for a NEW panel that fits strictly within the Current Chapter Context.
+    It must bridge the gap between the Previous and Next panels naturally.
+    The new panel should not introduce new plot points outside the current chapter's scope.
+    
     The caption must be short (max 15 words).
     The description should be visually detailed for an image generator.
   `;

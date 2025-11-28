@@ -1,11 +1,13 @@
 import React from 'react';
-import { Palette, Sparkles } from 'lucide-react';
+import { Palette, Sparkles, Layers } from 'lucide-react';
 
 interface StyleInputProps {
   styleValue: string;
   onStyleChange: (value: string) => void;
   themeValue: string;
   onThemeChange: (value: string) => void;
+  chapterCount: number;
+  onChapterCountChange: (value: number) => void;
 }
 
 const PRESETS = [
@@ -16,7 +18,14 @@ const PRESETS = [
   "Cyberpunk Graphic Novel, neon accents, gritty details"
 ];
 
-const StyleInput: React.FC<StyleInputProps> = ({ styleValue, onStyleChange, themeValue, onThemeChange }) => {
+const StyleInput: React.FC<StyleInputProps> = ({ 
+  styleValue, 
+  onStyleChange, 
+  themeValue, 
+  onThemeChange,
+  chapterCount,
+  onChapterCountChange
+}) => {
   return (
     <div className="w-full space-y-6">
       {/* Art Style Section */}
@@ -46,22 +55,44 @@ const StyleInput: React.FC<StyleInputProps> = ({ styleValue, onStyleChange, them
         </div>
       </div>
 
-      {/* Theme/Tone Section */}
-      <div className="space-y-4">
-        <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-purple-400" />
-          Theme & Tone (Optional)
-        </label>
-        <input
-          type="text"
-          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-100 placeholder-gray-500 transition-all"
-          placeholder="e.g. Dark and gritty, Whimsical and funny, Suspenseful..."
-          value={themeValue}
-          onChange={(e) => onThemeChange(e.target.value)}
-        />
-        <p className="text-xs text-gray-500">
-          This guides the story pacing and emotional tone of the script.
-        </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Theme/Tone Section */}
+        <div className="space-y-4">
+          <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            Theme & Tone (Optional)
+          </label>
+          <input
+            type="text"
+            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-100 placeholder-gray-500 transition-all"
+            placeholder="e.g. Dark, Whimsical..."
+            value={themeValue}
+            onChange={(e) => onThemeChange(e.target.value)}
+          />
+        </div>
+
+        {/* Chapter Count Section */}
+        <div className="space-y-4">
+          <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-blue-400" />
+            Number of Chapters (Pages)
+          </label>
+          <div className="flex items-center gap-4">
+            <input
+              type="range"
+              min="1"
+              max="5"
+              step="1"
+              value={chapterCount}
+              onChange={(e) => onChapterCountChange(parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            />
+            <span className="text-xl font-bold text-blue-400 w-8 text-center">{chapterCount}</span>
+          </div>
+          <p className="text-xs text-gray-500">
+            Generates {chapterCount} distinct pages, each acting as a chapter.
+          </p>
+        </div>
       </div>
     </div>
   );

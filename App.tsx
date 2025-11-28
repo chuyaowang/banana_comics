@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { 
   AppStatus, 
@@ -23,6 +22,7 @@ const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [styleDesc, setStyleDesc] = useState<string>("");
   const [themeDesc, setThemeDesc] = useState<string>("");
+  const [chapterCount, setChapterCount] = useState<number>(3);
   const [script, setScript] = useState<ComicScript | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
@@ -86,11 +86,10 @@ const App: React.FC = () => {
     });
 
     // 3. Determine Context for AI
-    // We are appending to the end of 'pageIndex'.
-    // Prev context: Last panel of current page (before the one we just added, effectively)
-    // Next context: First panel of next page (if exists)
-    
-    const currentPagePanels = script.pages[pageIndex].panels;
+    const currentPage = script.pages[pageIndex];
+    const currentPagePanels = currentPage.panels;
+    const chapterContext = currentPage.chapterTitle || "Untitled Chapter";
+
     const prevPanel = currentPagePanels.length > 0 ? currentPagePanels[currentPagePanels.length - 1] : undefined;
     
     const nextPage = script.pages[pageIndex + 1];
@@ -98,7 +97,7 @@ const App: React.FC = () => {
 
     // 4. Generate Suggestion
     try {
-      const suggestion = await generatePanelSuggestion(styleDesc, prevPanel, nextPanel);
+      const suggestion = await generatePanelSuggestion(styleDesc, chapterContext, prevPanel, nextPanel);
       
       // 5. Update the placeholder with real content
       setScript(prev => {
@@ -210,7 +209,7 @@ const App: React.FC = () => {
       const text = await readFileContent(file);
       
       setStatus(AppStatus.SCRIPTING);
-      const generatedScript = await generateComicScript(text, themeDesc);
+      const generatedScript = await generateComicScript(text, themeDesc, chapterCount);
       
       // Initialize panels with IDs, status, and default layout
       const initializedPages: ComicPage[] = generatedScript.pages.map(page => ({
@@ -322,6 +321,8 @@ const App: React.FC = () => {
                   onStyleChange={setStyleDesc}
                   themeValue={themeDesc}
                   onThemeChange={setThemeDesc}
+                  chapterCount={chapterCount}
+                  onChapterCountChange={setChapterCount}
                 />
               </div>
 
