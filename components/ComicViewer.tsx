@@ -270,10 +270,6 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                     const isEditing = editingPanelId === panel.id;
                     const canEdit = status === AppStatus.COMPLETE;
                     
-                    // Logic to check if user can reopen panel edit
-                    // We only show the edit button if the panel is NOT currently regenerating images.
-                    // However, we allow "isBusy" states like 'updating_prompt' to still be interruptible or viewable if we wanted,
-                    // but per requirement we just hide the pen if it's 'generating'.
                     const showEditButton = canEdit && !isEditing && panel.status !== 'generating';
 
                     return (
@@ -284,22 +280,22 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                       >
                          {/* Layout Controls Toolbar */}
                          {showLayoutControls && (
-                           <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover/panel:opacity-100 transition-opacity bg-slate-900/90 rounded p-1 backdrop-blur-sm">
+                           <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover/panel:opacity-100 transition-opacity bg-white/90 dark:bg-slate-900/90 rounded p-1 backdrop-blur-sm shadow-sm border border-slate-200 dark:border-slate-800" data-html2canvas-ignore="true">
                              {onMovePanel && panelIndex > 0 && (
-                               <button onClick={() => onMovePanel(pageIndex, panelIndex, 'prev')} className="p-1 text-slate-400 hover:text-white" title="Move Back">
+                               <button onClick={() => onMovePanel(pageIndex, panelIndex, 'prev')} className="p-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" title="Move Back">
                                  <ChevronLeft className="w-3 h-3" />
                                </button>
                              )}
                              {onMovePanel && panelIndex < page.panels.length - 1 && (
-                               <button onClick={() => onMovePanel(pageIndex, panelIndex, 'next')} className="p-1 text-slate-400 hover:text-white" title="Move Forward">
+                               <button onClick={() => onMovePanel(pageIndex, panelIndex, 'next')} className="p-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" title="Move Forward">
                                  <ChevronRight className="w-3 h-3" />
                                </button>
                              )}
-                             <div className="w-px bg-slate-700 mx-1"></div>
+                             <div className="w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
                              {isResizable && onResizePanel && (
                                <button 
                                  onClick={() => onResizePanel(pageIndex, panelIndex, currentSpan === 2 ? 1 : 2)}
-                                 className="p-1 text-slate-400 hover:text-white"
+                                 className="p-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                                  title={currentSpan === 2 ? "Shrink Width" : "Full Width"}
                                >
                                  {currentSpan === 2 ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
@@ -308,7 +304,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                              <div className="relative">
                                <button 
                                  onClick={() => setActiveSettingsPanel(activeSettingsPanel === panel.id ? null : panel.id)}
-                                 className={`p-1 rounded hover:text-white ${activeSettingsPanel === panel.id ? 'text-yellow-500' : 'text-slate-400'}`}
+                                 className={`p-1 rounded hover:text-slate-900 dark:hover:text-white ${activeSettingsPanel === panel.id ? 'text-yellow-600 dark:text-yellow-500' : 'text-slate-500 dark:text-slate-400'}`}
                                  title="Panel Text Settings"
                                >
                                  <Settings2 className="w-3 h-3" />
@@ -325,11 +321,11 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                  </div>
                                )}
                              </div>
-                             <div className="w-px bg-slate-700 mx-1"></div>
+                             <div className="w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
                              {onDeletePanel && page.panels.length > 1 && (
                                <button 
                                  onClick={() => onDeletePanel(pageIndex, panelIndex)}
-                                 className="p-1 text-red-400 hover:text-red-500"
+                                 className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"
                                  title="Delete Panel"
                                >
                                  <Trash2 className="w-3 h-3" />
@@ -340,10 +336,10 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
 
                         {/* Post-Gen Edit Toggle */}
                         {showEditButton && (
-                          <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/panel:opacity-100 transition-opacity mt-8 mr-1"> 
+                          <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/panel:opacity-100 transition-opacity mt-8 mr-1" data-html2canvas-ignore="true"> 
                             <button
                               onClick={() => setEditingPanelId(panel.id)}
-                              className="p-2 bg-white/50 hover:bg-white text-slate-800 rounded-full shadow-sm backdrop-blur-sm transition-all"
+                              className="p-2 bg-white/80 hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-full shadow-sm backdrop-blur-sm transition-all border border-slate-200 dark:border-slate-700"
                               title="Edit Panel Content"
                             >
                               <PenLine className="w-4 h-4" />
@@ -411,12 +407,12 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
 
                           {/* Post-Gen Edit Mode Overlay */}
                           {isEditing && (
-                            <div className="absolute inset-0 z-30 flex flex-col p-4 bg-slate-900/90 backdrop-blur-md overflow-y-auto">
+                            <div className="absolute inset-0 z-30 flex flex-col p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md overflow-y-auto transition-colors duration-300" data-html2canvas-ignore="true">
                               <div className="flex justify-between items-center mb-4">
-                                <h4 className="text-white text-sm font-bold uppercase">Edit Panel</h4>
+                                <h4 className="text-slate-900 dark:text-white text-sm font-bold uppercase transition-colors duration-300">Edit Panel</h4>
                                 <button 
                                   onClick={() => setEditingPanelId(null)}
-                                  className="text-slate-400 hover:text-white"
+                                  className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors duration-300"
                                 >
                                   <X className="w-5 h-5" />
                                 </button>
@@ -436,9 +432,9 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
 
                               <div className="space-y-4">
                                 <div>
-                                  <label className="block text-xs font-bold text-slate-400 mb-1">Visual Prompt</label>
+                                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 transition-colors duration-300">Visual Prompt</label>
                                   <textarea
-                                    className="w-full h-24 bg-slate-800 border border-slate-700 rounded p-2 text-xs text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500"
+                                    className="w-full h-24 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded p-2 text-xs text-slate-900 dark:text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500 transition-colors duration-300"
                                     value={panel.description}
                                     onChange={(e) => onUpdatePanelText && onUpdatePanelText(pageIndex, panelIndex, 'description', e.target.value)}
                                   />
@@ -457,9 +453,9 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                 </div>
 
                                 <div>
-                                  <label className="block text-xs font-bold text-slate-400 mb-1">Caption</label>
+                                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 transition-colors duration-300">Caption</label>
                                   <textarea
-                                    className="w-full h-20 bg-slate-800 border border-slate-700 rounded p-2 text-xs text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500"
+                                    className="w-full h-20 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded p-2 text-xs text-slate-900 dark:text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500 transition-colors duration-300"
                                     value={panel.caption}
                                     onChange={(e) => onUpdatePanelText && onUpdatePanelText(pageIndex, panelIndex, 'caption', e.target.value)}
                                     onBlur={(e) => onCaptionBlur && onCaptionBlur(pageIndex, panelIndex, e.target.value)}
@@ -519,6 +515,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                 {showLayoutControls && onAddPanel && (
                   <button 
                     onClick={() => onAddPanel(pageIndex)}
+                    data-html2canvas-ignore="true"
                     className="w-full mt-4 py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-400 hover:border-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 transition-all flex items-center justify-center gap-2 font-bold"
                   >
                     <Plus className="w-5 h-5" /> Add Panel to Page {page.pageNumber}
