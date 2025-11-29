@@ -320,7 +320,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-300">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={handleStartOver}>
             <BookOpen className="w-8 h-8 text-yellow-500" />
@@ -348,7 +348,7 @@ const App: React.FC = () => {
              {/* Dark Mode Toggle */}
              <button
                onClick={() => setDarkMode(!darkMode)}
-               className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+               className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-300"
                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
              >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -366,17 +366,17 @@ const App: React.FC = () => {
         {status === AppStatus.IDLE || status === AppStatus.ERROR ? (
           <div className="max-w-2xl mx-auto space-y-10">
             <div className="text-center space-y-4">
-              <h2 className="text-4xl md:text-5xl font-comic-title text-slate-900 dark:text-white">
+              <h2 className="text-4xl md:text-5xl font-comic-title text-slate-900 dark:text-white transition-colors duration-300">
                 Turn your words into <span className="text-yellow-500">Art</span>
               </h2>
-              <p className="text-slate-600 dark:text-slate-400 text-lg">
+              <p className="text-slate-600 dark:text-slate-400 text-lg transition-colors duration-300">
                 Upload a story, script, or document. We'll handle the rest, panel by panel.
               </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-8">
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-8 transition-colors duration-300">
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 transition-colors duration-300">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-black text-xs font-bold">1</span>
                   Upload Story
                 </h3>
@@ -384,7 +384,7 @@ const App: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 transition-colors duration-300">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-black text-xs font-bold">2</span>
                   Configuration
                 </h3>
@@ -423,7 +423,7 @@ const App: React.FC = () => {
              {(status === AppStatus.PARSING || status === AppStatus.SCRIPTING) && (
                <div className="flex flex-col items-center justify-center py-20 space-y-6">
                  <Loader2 className="w-16 h-16 text-yellow-500 animate-spin" />
-                 <h2 className="text-2xl font-comic-title animate-pulse text-slate-900 dark:text-white">
+                 <h2 className="text-2xl font-comic-title animate-pulse text-slate-900 dark:text-white transition-colors duration-300">
                    {status === AppStatus.PARSING ? 'Reading Document...' : 'Writing Script & Layout...'}
                  </h2>
                  <p className="text-slate-500">The AI is breaking down your story into panels.</p>
@@ -432,7 +432,7 @@ const App: React.FC = () => {
 
              {/* Review Mode Control Bar */}
              {status === AppStatus.REVIEW && (
-               <div className="sticky top-20 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4">
+               <div className="sticky top-20 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 transition-colors duration-300">
                  <div className="w-full flex-1">
                     <TextCustomizer 
                       config={textConfig} 
@@ -456,7 +456,7 @@ const App: React.FC = () => {
                <div className="animate-in fade-in duration-500 slide-in-from-bottom-10 space-y-4">
                  
                  {status === AppStatus.REVIEW && (
-                   <p className="text-center text-slate-500 dark:text-slate-400 text-sm">
+                   <p className="text-center text-slate-500 dark:text-slate-400 text-sm transition-colors duration-300">
                      Review mode active. <span className="text-yellow-600 dark:text-yellow-500">Edit text</span>, <span className="text-yellow-600 dark:text-yellow-500">add panels</span>, or customize <span className="text-yellow-600 dark:text-yellow-500">bubbles</span> before generating.
                    </p>
                  )}
