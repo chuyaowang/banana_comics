@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Palette, Sparkles, Layers, Globe } from 'lucide-react';
 import { Language } from '../types';
@@ -62,22 +63,21 @@ const StyleInput: React.FC<StyleInputProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Theme/Tone Section */}
-        <div className="space-y-4">
-          <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            Theme & Tone (Optional)
-          </label>
-          <input
-            type="text"
-            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 transition-all"
-            placeholder="e.g. Dark, Whimsical..."
-            value={themeValue}
-            onChange={(e) => onThemeChange(e.target.value)}
-          />
-        </div>
+      {/* Theme/Tone Section */}
+      <div className="space-y-4">
+        <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          Theme & Tone (Optional)
+        </label>
+        <textarea
+          className="w-full h-24 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 resize-none transition-all"
+          placeholder="e.g. Dark, Whimsical, set in a dystopian future where nature has reclaimed the cities..."
+          value={themeValue}
+          onChange={(e) => onThemeChange(e.target.value)}
+        />
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Language Section */}
         <div className="space-y-4">
           <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 flex items-center gap-2">
