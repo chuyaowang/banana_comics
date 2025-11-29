@@ -324,7 +324,7 @@ const App: React.FC = () => {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={handleStartOver}>
             <BookOpen className="w-8 h-8 text-yellow-500" />
-            <h1 className="text-2xl font-comic-title text-slate-900 dark:text-white tracking-wide">
+            <h1 className="text-2xl font-comic-title text-slate-900 dark:text-white tracking-wide transition-colors duration-300">
               Banana<span className="text-yellow-500">Comics</span>
             </h1>
           </div>
