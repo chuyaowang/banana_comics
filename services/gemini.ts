@@ -30,7 +30,7 @@ export const generateComicScript = async (
     Constraints:
     1. Break the story down into EXACTLY ${chapterCount} pages/chapters.
     2. If the story has distinct sections, assign a "Chapter Title" to the pages.
-    3. ${themePrompt} CRITICAL: You must extract visual setting details (time period, location, clothing style, atmosphere) from this theme and EXPLICITLY REPEAT them in EVERY panel's visual description to ensure consistency (e.g., if theme is "Ancient China", every panel description must mention "ancient chinese clothing", "ancient architecture").
+    3. ${themePrompt} Ensure the visual elements (clothing, architecture, technology) remain consistent with this theme throughout the script, but ensure the panel compositions and actions are dynamic and varied.
     4. LANGUAGE REQUIREMENT: Write ALL captions, dialogue, and titles in ${language}.
     5. The "description" for the panels (visual prompt) must remain in English for the image generator.
 
