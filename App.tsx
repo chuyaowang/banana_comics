@@ -99,15 +99,23 @@ const App: React.FC = () => {
     // Check if caption actually changed. If not, do nothing.
     if (panel.caption === caption) return;
 
+    // Check if we already have a generated image (so we don't hide it)
+    const hasImage = panel.status === 'complete' && !!panel.imageUrl;
+
     // Set status to indicate we are fetching a new prompt
     updatePanel(pageIndex, panelIndex, { status: 'updating_prompt' });
     
     try {
       const newDescription = await updateVisualPrompt(caption, panel.description, styleDesc);
-      updatePanel(pageIndex, panelIndex, { description: newDescription, status: 'pending' });
+      
+      // If we had an image, keep status as complete to keep image visible. Otherwise pending.
+      updatePanel(pageIndex, panelIndex, { 
+        description: newDescription, 
+        status: hasImage ? 'complete' : 'pending' 
+      });
     } catch (e) {
       console.error("Failed to update visual prompt", e);
-      updatePanel(pageIndex, panelIndex, { status: 'pending' }); // Revert status
+      updatePanel(pageIndex, panelIndex, { status: hasImage ? 'complete' : 'pending' }); // Revert status
     }
   }, [script, styleDesc, updatePanel]);
 
@@ -425,7 +433,7 @@ const App: React.FC = () => {
              {/* Review Mode Control Bar */}
              {status === AppStatus.REVIEW && (
                <div className="sticky top-20 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4">
-                 <div className="w-full md:w-2/3">
+                 <div className="w-full flex-1">
                     <TextCustomizer 
                       config={textConfig} 
                       onChange={(newConfig) => setTextConfig(prev => ({ ...prev, ...newConfig }))} 
@@ -435,7 +443,7 @@ const App: React.FC = () => {
                  <div className="w-full md:w-auto flex gap-2">
                    <button 
                     onClick={handleConfirmLayoutAndGenerate}
-                    className="w-full px-6 py-3 bg-green-500 hover:bg-green-400 text-slate-950 font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition-all"
+                    className="w-full px-6 py-3 bg-green-500 hover:bg-green-400 text-slate-950 font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition-all whitespace-nowrap"
                    >
                      Generate Comic <ArrowRight className="w-4 h-4" />
                    </button>

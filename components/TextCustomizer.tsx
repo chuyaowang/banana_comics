@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Type, MessageSquare, Plus, Minus, Palette, XCircle, Heading } from 'lucide-react';
-import { TextConfig, FontFamily, BubbleStyle, Language } from '../types';
+import { Type, Plus, Minus, XCircle } from 'lucide-react';
+import { TextConfig, FontFamily, Language } from '../types';
 
 interface TextCustomizerProps {
   config: Partial<TextConfig>;
@@ -17,21 +17,16 @@ const TextCustomizer: React.FC<TextCustomizerProps> = ({ config, onChange, compa
     onChange({ ...config, ...updates });
   };
 
-  const containerClass = compact 
-    ? "w-full p-3 bg-slate-800 rounded-lg flex flex-col gap-3 shadow-xl border border-slate-700 z-50"
-    : "w-full bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-wrap gap-6 items-center justify-between shadow-lg";
-
-  // Determine available fonts based on language
   const isChinese = language === 'Chinese';
   
   const FontOptions = () => (
     <>
       {isChinese ? (
         <>
-          <option value="ZCOOL QingKe HuangYou">QingKe HuangYou (Comic)</option>
-          <option value="Ma Shan Zheng">Ma Shan Zheng (Brush)</option>
-          <option value="Zhi Mang Xing">Zhi Mang Xing (Calligraphy)</option>
-          <option value="Noto Sans SC">Noto Sans (Standard)</option>
+          <option value="ZCOOL QingKe HuangYou">QingKe HuangYou</option>
+          <option value="Ma Shan Zheng">Ma Shan Zheng</option>
+          <option value="Zhi Mang Xing">Zhi Mang Xing</option>
+          <option value="Noto Sans SC">Noto Sans</option>
         </>
       ) : (
         <>
@@ -43,115 +38,173 @@ const TextCustomizer: React.FC<TextCustomizerProps> = ({ config, onChange, compa
     </>
   );
 
-  return (
-    <div className={containerClass}>
-      
-      {/* Header for compact mode */}
-      {compact && (
-        <div className="flex justify-between items-center border-b border-slate-700 pb-2 mb-1">
-          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Panel Styling</span>
+  // --- COMPACT MODE (Used in Edit Overlay) ---
+  if (compact) {
+    return (
+      <div className="w-full bg-slate-800 rounded-lg p-3 flex flex-col gap-3 border border-slate-700 shadow-xl">
+        <div className="flex justify-between items-center border-b border-slate-700 pb-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Panel Settings</span>
           {onReset && (
-            <button onClick={onReset} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
+            <button onClick={onReset} className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1">
               <XCircle className="w-3 h-3" /> Reset
             </button>
           )}
         </div>
-      )}
 
-      {/* Global Title Font Selector (Only in Full Mode) */}
-      {!compact && (
-        <div className="flex items-center gap-3 border-r border-slate-700 pr-6 mr-2">
-          <Heading className="w-4 h-4 text-yellow-500" />
-          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-400 uppercase font-bold">Title Font</span>
+        {/* Font */}
+        <div className="flex items-center justify-between">
+           <label className="text-xs text-slate-400">Font</label>
+           <select
+            value={config.fontFamily || (isChinese ? 'ZCOOL QingKe HuangYou' : 'Comic Neue')}
+            onChange={(e) => updateConfig({ fontFamily: e.target.value as FontFamily })}
+            className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 w-32 focus:ring-1 focus:ring-yellow-500 outline-none"
+           >
+            <FontOptions />
+           </select>
+        </div>
+
+        {/* Size */}
+        <div className="flex items-center justify-between">
+            <label className="text-xs text-slate-400">Size</label>
+            <div className="flex items-center bg-slate-900 rounded border border-slate-700">
+                <button 
+                onClick={() => updateConfig({ fontSize: Math.max(0.8, (config.fontSize || 1.0) - 0.1) })}
+                className="p-1 hover:bg-slate-800 text-slate-400"
+                >
+                <Minus className="w-3 h-3" />
+                </button>
+                <span className="text-xs font-mono w-8 text-center text-slate-300">
+                {((config.fontSize || 1.0) * 100).toFixed(0)}%
+                </span>
+                <button 
+                onClick={() => updateConfig({ fontSize: Math.min(2.0, (config.fontSize || 1.0) + 0.1) })}
+                className="p-1 hover:bg-slate-800 text-slate-400"
+                >
+                <Plus className="w-3 h-3" />
+                </button>
+            </div>
+        </div>
+
+        {/* Color */}
+        <div className="flex items-center justify-between">
+            <label className="text-xs text-slate-400">Color</label>
+            <div className="flex gap-1.5">
+            {['#000000', '#ffffff', '#ef4444', '#eab308'].map(color => (
+                <button
+                key={color}
+                onClick={() => updateConfig({ color })}
+                className={`w-4 h-4 rounded-full border ${config.color === color ? 'border-white ring-1 ring-blue-500' : 'border-transparent ring-1 ring-slate-600'}`}
+                style={{ backgroundColor: color }}
+                />
+            ))}
+            </div>
+        </div>
+
+        {/* Style */}
+        <div className="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded border border-slate-700">
+            {['STANDARD', 'THOUGHT', 'SHOUT'].map((style) => (
+                <button
+                    key={style}
+                    onClick={() => updateConfig({ bubbleStyle: style as any })}
+                    className={`text-[9px] font-bold py-1 rounded transition-colors ${
+                        (config.bubbleStyle || 'STANDARD') === style 
+                        ? 'bg-slate-700 text-white' 
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                >
+                    {style === 'STANDARD' ? 'STD' : style}
+                </button>
+            ))}
+        </div>
+      </div>
+    );
+  }
+
+  // --- FULL TOOLBAR MODE (Review Screen) ---
+  return (
+    <div className="w-full bg-slate-900 border border-slate-800 rounded-xl shadow-lg flex flex-col lg:flex-row items-center p-2 gap-4 lg:gap-0">
+        
+        {/* Title Settings Group */}
+        <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start px-2 lg:pr-6 lg:border-r border-slate-800">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Title Font</span>
             <select
-              value={config.titleFontFamily || (isChinese ? 'ZCOOL QingKe HuangYou' : 'Bangers')}
-              onChange={(e) => updateConfig({ titleFontFamily: e.target.value as FontFamily })}
-              className="bg-transparent text-white text-xs border-none focus:ring-0 p-0 cursor-pointer hover:text-yellow-400"
+                value={config.titleFontFamily || (isChinese ? 'ZCOOL QingKe HuangYou' : 'Bangers')}
+                onChange={(e) => updateConfig({ titleFontFamily: e.target.value as FontFamily })}
+                className="bg-transparent text-white text-sm font-bold border-none focus:ring-0 p-0 cursor-pointer hover:text-yellow-400 w-40 text-right lg:text-left"
             >
-              <FontOptions />
+                <FontOptions />
             </select>
-          </div>
         </div>
-      )}
 
-      {/* Bubble Font Family */}
-      <div className={`flex items-center ${compact ? 'justify-between' : 'gap-3'}`}>
-        {!compact && <Type className="w-4 h-4 text-gray-400" />}
-        {compact && <span className="text-xs text-gray-400">Font</span>}
-        <select
-          value={config.fontFamily || (isChinese ? 'ZCOOL QingKe HuangYou' : 'Comic Neue')}
-          onChange={(e) => updateConfig({ fontFamily: e.target.value as FontFamily })}
-          className="bg-slate-700 border border-slate-600 text-white text-xs rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block p-1.5 min-w-[120px]"
-        >
-          <FontOptions />
-        </select>
-      </div>
+        {/* Panel Settings Group */}
+        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-between lg:justify-start lg:pl-6">
+            
+            <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden sm:block">Text</span>
+                <div className="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
+                    <Type className="w-3 h-3 text-slate-400 ml-1 mr-2" />
+                    <select
+                    value={config.fontFamily || (isChinese ? 'ZCOOL QingKe HuangYou' : 'Comic Neue')}
+                    onChange={(e) => updateConfig({ fontFamily: e.target.value as FontFamily })}
+                    className="bg-transparent text-xs text-slate-200 border-none focus:ring-0 py-0 pl-0 pr-6 w-28 cursor-pointer"
+                    >
+                    <FontOptions />
+                    </select>
+                </div>
+            </div>
 
-      {/* Font Size */}
-      <div className={`flex items-center ${compact ? 'justify-between' : 'gap-2'}`}>
-        {compact && <span className="text-xs text-gray-400">Size</span>}
-        <div className="flex items-center gap-2">
-            <button 
-            onClick={() => updateConfig({ fontSize: Math.max(0.8, (config.fontSize || 1.0) - 0.1) })}
-            className="p-1 hover:bg-slate-600 rounded text-gray-400"
-            >
-            <Minus className="w-3 h-3" />
-            </button>
-            <span className="text-xs font-mono w-8 text-center text-gray-300">
-            {((config.fontSize || 1.0) * 100).toFixed(0)}%
-            </span>
-            <button 
-            onClick={() => updateConfig({ fontSize: Math.min(2.0, (config.fontSize || 1.0) + 0.1) })}
-            className="p-1 hover:bg-slate-600 rounded text-gray-400"
-            >
-            <Plus className="w-3 h-3" />
-            </button>
+            <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-0.5">
+                <button 
+                    onClick={() => updateConfig({ fontSize: Math.max(0.8, (config.fontSize || 1.0) - 0.1) })}
+                    className="p-1.5 hover:bg-slate-700 text-slate-400 rounded"
+                >
+                    <Minus className="w-3 h-3" />
+                </button>
+                <span className="text-xs font-mono w-10 text-center text-slate-300">
+                    {((config.fontSize || 1.0) * 100).toFixed(0)}%
+                </span>
+                <button 
+                    onClick={() => updateConfig({ fontSize: Math.min(2.0, (config.fontSize || 1.0) + 0.1) })}
+                    className="p-1.5 hover:bg-slate-700 text-slate-400 rounded"
+                >
+                    <Plus className="w-3 h-3" />
+                </button>
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-800 rounded-lg border border-slate-700 p-1">
+                {['#000000', '#ffffff', '#ef4444', '#eab308'].map(color => (
+                <button
+                    key={color}
+                    onClick={() => updateConfig({ color })}
+                    className={`w-4 h-4 rounded-full transition-transform ${config.color === color ? 'ring-2 ring-blue-500 scale-110' : 'hover:scale-110'}`}
+                    style={{ backgroundColor: color, border: '1px solid rgba(255,255,255,0.2)' }}
+                />
+                ))}
+            </div>
+
+            <div className="hidden sm:block w-px h-6 bg-slate-800"></div>
+
+            <div className="flex bg-slate-800 rounded-lg border border-slate-700 p-0.5">
+                {[
+                    { id: 'STANDARD', label: 'Std' },
+                    { id: 'THOUGHT', label: 'Cloud' },
+                    { id: 'SHOUT', label: 'Shout' }
+                ].map((style) => (
+                    <button
+                        key={style.id}
+                        onClick={() => updateConfig({ bubbleStyle: style.id as any })}
+                        className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${
+                            (config.bubbleStyle || 'STANDARD') === style.id
+                            ? 'bg-slate-600 text-white shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                    >
+                        {style.label}
+                    </button>
+                ))}
+            </div>
+
         </div>
-      </div>
-
-      {/* Text Color */}
-      <div className={`flex items-center ${compact ? 'justify-between' : 'gap-3'}`}>
-        {!compact && <Palette className="w-4 h-4 text-gray-400" />}
-        {compact && <span className="text-xs text-gray-400">Color</span>}
-        <div className="flex gap-1.5">
-          {['#000000', '#ffffff', '#ef4444', '#eab308'].map(color => (
-            <button
-              key={color}
-              onClick={() => updateConfig({ color })}
-              className={`w-5 h-5 rounded-full border-2 ${config.color === color ? 'border-blue-500 scale-110' : 'border-slate-600'}`}
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Bubble Style */}
-      <div className={`flex items-center ${compact ? 'justify-between w-full' : 'gap-3'}`}>
-        {!compact && <MessageSquare className="w-4 h-4 text-gray-400" />}
-        {compact && <span className="text-xs text-gray-400">Bubble</span>}
-        <div className="flex bg-slate-700 rounded-lg p-0.5">
-          <button
-            onClick={() => updateConfig({ bubbleStyle: 'STANDARD' })}
-            className={`px-2 py-1 text-[10px] rounded-md transition-colors ${config.bubbleStyle === 'STANDARD' || !config.bubbleStyle ? 'bg-slate-500 text-white' : 'text-gray-400 hover:text-white'}`}
-          >
-            Std
-          </button>
-          <button
-            onClick={() => updateConfig({ bubbleStyle: 'THOUGHT' })}
-            className={`px-2 py-1 text-[10px] rounded-md transition-colors ${config.bubbleStyle === 'THOUGHT' ? 'bg-slate-500 text-white' : 'text-gray-400 hover:text-white'}`}
-          >
-            Cloud
-          </button>
-          <button
-            onClick={() => updateConfig({ bubbleStyle: 'SHOUT' })}
-            className={`px-2 py-1 text-[10px] rounded-md transition-colors ${config.bubbleStyle === 'SHOUT' ? 'bg-slate-500 text-white' : 'text-gray-400 hover:text-white'}`}
-          >
-            Shout
-          </button>
-        </div>
-      </div>
-
     </div>
   );
 };

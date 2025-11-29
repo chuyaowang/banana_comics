@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ComicScript, ComicPage, ComicPanel, TextConfig, LayoutType, AppStatus, ComicResourcePack, Language } from '../types';
-import { Download, Loader2, RefreshCw, Plus, Trash2, Settings2, GripVertical, ChevronLeft, ChevronRight, Maximize2, Minimize2, Eye, EyeOff, Package, PenLine, Check, X } from 'lucide-react';
+import { Download, Loader2, RefreshCw, Plus, Trash2, Settings2, ChevronLeft, ChevronRight, Maximize2, Minimize2, Eye, EyeOff, Package, PenLine, Check, X } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import JSZip from 'jszip';
@@ -14,7 +14,7 @@ interface ComicViewerProps {
   textConfig: TextConfig;
   originalFile: File | null;
   artStyle: string;
-  language: Language; // New prop to pass language down
+  language: Language; 
   onRegeneratePanel?: (pageIndex: number, panelIndex: number) => void;
   onLayoutChange: (pageIndex: number, layout: LayoutType) => void;
   onUpdatePanelText?: (pageIndex: number, panelIndex: number, field: 'description' | 'caption', value: string) => void;
@@ -104,7 +104,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
         title: script.title,
         metadata: {
           artStyle: artStyle,
-          themeAndTone: script.theme || "None", // Consolidated field
+          themeAndTone: script.theme || "None", 
           language: language, 
           date: new Date().toISOString()
         },
@@ -161,20 +161,19 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
     } else if (config.bubbleStyle === 'SHOUT') {
       base = "bg-white border-4 border-black p-4 clip-shout shadow-none transform rotate-1 ";
     } else {
-      base += "rounded-xl "; // Standard
+      base += "rounded-xl "; 
     }
     return base;
   };
 
   const isReviewMode = status === AppStatus.REVIEW;
-  // Layout controls (move, resize, delete, layout selector) should be available in both Review and Complete modes
   const showLayoutControls = status === AppStatus.REVIEW || status === AppStatus.COMPLETE;
 
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto space-y-8 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-center w-full px-4 gap-4">
         <h2 
-          className="text-4xl text-yellow-500 tracking-wider uppercase drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)]"
+          className="text-4xl text-yellow-500 tracking-wider uppercase drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)] text-center md:text-left"
           style={{ fontFamily: globalTextConfig.titleFontFamily || 'Bangers' }}
         >
           {script.title}
@@ -185,7 +184,6 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
             <button 
               onClick={() => setShowCaptions(!showCaptions)}
               className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors text-sm"
-              title={showCaptions ? "Hide Captions" : "Show Captions"}
             >
               {showCaptions ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               {showCaptions ? "Hide Text" : "Show Text"}
@@ -271,7 +269,12 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
 
                     const isEditing = editingPanelId === panel.id;
                     const canEdit = status === AppStatus.COMPLETE;
-                    const isBusy = panel.status === 'generating' || panel.status === 'updating_prompt';
+                    
+                    // Logic to check if user can reopen panel edit
+                    // We only show the edit button if the panel is NOT currently regenerating images.
+                    // However, we allow "isBusy" states like 'updating_prompt' to still be interruptible or viewable if we wanted,
+                    // but per requirement we just hide the pen if it's 'generating'.
+                    const showEditButton = canEdit && !isEditing && panel.status !== 'generating';
 
                     return (
                       <div 
@@ -338,9 +341,8 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                          )}
 
                         {/* Post-Gen Edit Toggle */}
-                        {canEdit && !isEditing && panel.status !== 'generating' && (
+                        {showEditButton && (
                           <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/panel:opacity-100 transition-opacity mt-8 mr-1"> 
-                            {/* Adjusted margin to clear the toolbar if both are visible, though hover usually shows one */}
                             <button
                               onClick={() => setEditingPanelId(panel.id)}
                               className="p-2 bg-white/50 hover:bg-white text-slate-800 rounded-full shadow-sm backdrop-blur-sm transition-all"
@@ -411,13 +413,12 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
 
                           {/* Post-Gen Edit Mode Overlay */}
                           {isEditing && (
-                            <div className="absolute inset-0 z-30 flex flex-col p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
+                            <div className="absolute inset-0 z-30 flex flex-col p-4 bg-slate-900/90 backdrop-blur-md overflow-y-auto">
                               <div className="flex justify-between items-center mb-4">
                                 <h4 className="text-white text-sm font-bold uppercase">Edit Panel</h4>
                                 <button 
-                                  onClick={() => !isBusy && setEditingPanelId(null)}
-                                  disabled={isBusy}
-                                  className={`${isBusy ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-white'}`}
+                                  onClick={() => setEditingPanelId(null)}
+                                  className="text-slate-400 hover:text-white"
                                 >
                                   <X className="w-5 h-5" />
                                 </button>
@@ -442,16 +443,17 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                     className="w-full h-24 bg-slate-800 border border-slate-700 rounded p-2 text-xs text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500"
                                     value={panel.description}
                                     onChange={(e) => onUpdatePanelText && onUpdatePanelText(pageIndex, panelIndex, 'description', e.target.value)}
-                                    disabled={isBusy}
                                   />
                                   {onRegeneratePanel && (
                                     <button 
-                                      onClick={() => onRegeneratePanel(pageIndex, panelIndex)}
-                                      disabled={isBusy}
-                                      className="mt-2 w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded flex items-center justify-center gap-2 transition-colors"
+                                      onClick={() => {
+                                        onRegeneratePanel(pageIndex, panelIndex);
+                                        setEditingPanelId(null);
+                                      }}
+                                      className="mt-2 w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded flex items-center justify-center gap-2 transition-colors"
                                     >
                                       {panel.status === 'generating' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                                      {panel.status === 'generating' ? 'Generating...' : 'Regenerate Image'}
+                                      Regenerate Image
                                     </button>
                                   )}
                                 </div>
@@ -463,26 +465,15 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                     value={panel.caption}
                                     onChange={(e) => onUpdatePanelText && onUpdatePanelText(pageIndex, panelIndex, 'caption', e.target.value)}
                                     onBlur={(e) => onCaptionBlur && onCaptionBlur(pageIndex, panelIndex, e.target.value)}
-                                    disabled={isBusy}
                                   />
                                 </div>
 
                                 <button 
                                   onClick={() => setEditingPanelId(null)}
-                                  disabled={isBusy}
-                                  className={`w-full py-2 ${isBusy ? 'bg-slate-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500'} text-white text-xs font-bold rounded flex items-center justify-center gap-2 transition-colors`}
+                                  className={`w-full py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded flex items-center justify-center gap-2 transition-colors`}
                                 >
-                                  {isBusy ? (
-                                    <>
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                      Processing...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Check className="w-3 h-3" />
-                                      Done
-                                    </>
-                                  )}
+                                  <Check className="w-3 h-3" />
+                                  Done
                                 </button>
                               </div>
                             </div>
