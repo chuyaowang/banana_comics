@@ -328,9 +328,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                              <div className="w-px bg-slate-700 mx-1"></div>
                              {onDeletePanel && page.panels.length > 1 && (
                                <button 
-                                 onClick={() => {
-                                   if(confirm('Delete this panel?')) onDeletePanel(pageIndex, panelIndex);
-                                 }}
+                                 onClick={() => onDeletePanel(pageIndex, panelIndex)}
                                  className="p-1 text-red-400 hover:text-red-500"
                                  title="Delete Panel"
                                >
