@@ -271,6 +271,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
 
                     const isEditing = editingPanelId === panel.id;
                     const canEdit = status === AppStatus.COMPLETE;
+                    const isBusy = panel.status === 'generating' || panel.status === 'updating_prompt';
 
                     return (
                       <div 
@@ -414,8 +415,9 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                               <div className="flex justify-between items-center mb-4">
                                 <h4 className="text-white text-sm font-bold uppercase">Edit Panel</h4>
                                 <button 
-                                  onClick={() => setEditingPanelId(null)}
-                                  className="text-slate-400 hover:text-white"
+                                  onClick={() => !isBusy && setEditingPanelId(null)}
+                                  disabled={isBusy}
+                                  className={`${isBusy ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-white'}`}
                                 >
                                   <X className="w-5 h-5" />
                                 </button>
@@ -440,12 +442,13 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                     className="w-full h-24 bg-slate-800 border border-slate-700 rounded p-2 text-xs text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500"
                                     value={panel.description}
                                     onChange={(e) => onUpdatePanelText && onUpdatePanelText(pageIndex, panelIndex, 'description', e.target.value)}
+                                    disabled={isBusy}
                                   />
                                   {onRegeneratePanel && (
                                     <button 
                                       onClick={() => onRegeneratePanel(pageIndex, panelIndex)}
-                                      disabled={panel.status === 'generating'}
-                                      className="mt-2 w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded flex items-center justify-center gap-2 transition-colors"
+                                      disabled={isBusy}
+                                      className="mt-2 w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded flex items-center justify-center gap-2 transition-colors"
                                     >
                                       {panel.status === 'generating' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                                       {panel.status === 'generating' ? 'Generating...' : 'Regenerate Image'}
@@ -459,14 +462,27 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                     className="w-full h-20 bg-slate-800 border border-slate-700 rounded p-2 text-xs text-slate-200 resize-none focus:ring-1 focus:ring-yellow-500"
                                     value={panel.caption}
                                     onChange={(e) => onUpdatePanelText && onUpdatePanelText(pageIndex, panelIndex, 'caption', e.target.value)}
+                                    onBlur={(e) => onCaptionBlur && onCaptionBlur(pageIndex, panelIndex, e.target.value)}
+                                    disabled={isBusy}
                                   />
                                 </div>
 
                                 <button 
                                   onClick={() => setEditingPanelId(null)}
-                                  className="w-full py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded flex items-center justify-center gap-2"
+                                  disabled={isBusy}
+                                  className={`w-full py-2 ${isBusy ? 'bg-slate-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500'} text-white text-xs font-bold rounded flex items-center justify-center gap-2 transition-colors`}
                                 >
-                                  <Check className="w-3 h-3" /> Done
+                                  {isBusy ? (
+                                    <>
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="w-3 h-3" />
+                                      Done
+                                    </>
+                                  )}
                                 </button>
                               </div>
                             </div>
