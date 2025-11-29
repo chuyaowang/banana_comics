@@ -167,6 +167,8 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
   };
 
   const isReviewMode = status === AppStatus.REVIEW;
+  // Layout controls (move, resize, delete, layout selector) should be available in both Review and Complete modes
+  const showLayoutControls = status === AppStatus.REVIEW || status === AppStatus.COMPLETE;
 
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto space-y-8 pb-20">
@@ -217,7 +219,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
           return (
             <div key={pageIndex} className="relative group">
               
-              {isReviewMode && (
+              {showLayoutControls && (
                 <div className="absolute -top-3 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                    <LayoutSelector 
                       currentLayout={page.layout} 
@@ -276,8 +278,8 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                         className={`relative border-4 border-black bg-slate-100 flex flex-col ${spanClass} hover:border-yellow-500 transition-colors group/panel`}
                         style={{ minHeight: page.layout === 'SPLASH' ? '800px' : '300px' }}
                       >
-                         {/* Review Mode Toolbar */}
-                         {isReviewMode && (
+                         {/* Layout Controls Toolbar */}
+                         {showLayoutControls && (
                            <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover/panel:opacity-100 transition-opacity bg-slate-900/90 rounded p-1 backdrop-blur-sm">
                              {onMovePanel && panelIndex > 0 && (
                                <button onClick={() => onMovePanel(pageIndex, panelIndex, 'prev')} className="p-1 text-slate-400 hover:text-white" title="Move Back">
@@ -335,8 +337,9 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                          )}
 
                         {/* Post-Gen Edit Toggle */}
-                        {canEdit && !isEditing && (
-                          <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/panel:opacity-100 transition-opacity">
+                        {canEdit && !isEditing && panel.status !== 'generating' && (
+                          <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/panel:opacity-100 transition-opacity mt-8 mr-1"> 
+                            {/* Adjusted margin to clear the toolbar if both are visible, though hover usually shows one */}
                             <button
                               onClick={() => setEditingPanelId(panel.id)}
                               className="p-2 bg-white/50 hover:bg-white text-slate-800 rounded-full shadow-sm backdrop-blur-sm transition-all"
@@ -368,9 +371,13 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                               )}
                             </div>
                           ) : (
+                            // Loading or Empty State
                             <div className="flex flex-col items-center justify-center text-slate-500 p-6 text-center w-full h-full bg-slate-100">
-                              {status === 'GENERATING_IMAGES' && panel.status === 'generating' ? (
-                                <Loader2 className="w-8 h-8 animate-spin mb-2 text-yellow-600" />
+                              {panel.status === 'generating' ? (
+                                <div className="flex flex-col items-center">
+                                  <Loader2 className="w-8 h-8 animate-spin mb-2 text-yellow-600" />
+                                  <span className="text-xs text-yellow-700 font-bold uppercase animate-pulse">Generating Art...</span>
+                                </div>
                               ) : panel.status === 'updating_prompt' ? (
                                 <div className="flex flex-col items-center">
                                   <RefreshCw className="w-6 h-6 animate-spin text-purple-500 mb-2" />
@@ -382,8 +389,8 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                 </div>
                               )}
                               
-                              {/* Editable Description in Review Mode */}
-                              {isReviewMode && onUpdatePanelText && panel.status !== 'updating_prompt' ? (
+                              {/* Editable Description in Review Mode (Pre-Generation) */}
+                              {isReviewMode && onUpdatePanelText && panel.status !== 'updating_prompt' && panel.status !== 'generating' ? (
                                 <div className="w-full mt-2">
                                    <label className="text-[10px] uppercase font-bold text-slate-400">Visual Prompt</label>
                                    <textarea 
@@ -394,7 +401,9 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                    />
                                 </div>
                               ) : (
-                                !isReviewMode && !isEditing && <p className="text-xs font-mono mt-2 opacity-60 max-w-[90%]">{panel.description}</p>
+                                !isReviewMode && !isEditing && panel.status !== 'generating' && (
+                                  <p className="text-xs font-mono mt-2 opacity-60 max-w-[90%]">{panel.description}</p>
+                                )
                               )}
                             </div>
                           )}
@@ -419,7 +428,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                     onChange={(newConf) => onUpdatePanelConfig(pageIndex, panelIndex, newConf)} 
                                     compact={true}
                                     onReset={() => onUpdatePanelConfig(pageIndex, panelIndex, undefined)}
-                                    language={language} // Pass language here for correct fonts
+                                    language={language}
                                   />
                                 </div>
                               )}
@@ -435,9 +444,11 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                                   {onRegeneratePanel && (
                                     <button 
                                       onClick={() => onRegeneratePanel(pageIndex, panelIndex)}
-                                      className="mt-2 w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded flex items-center justify-center gap-2"
+                                      disabled={panel.status === 'generating'}
+                                      className="mt-2 w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded flex items-center justify-center gap-2 transition-colors"
                                     >
-                                      <RefreshCw className="w-3 h-3" /> Regenerate Image
+                                      {panel.status === 'generating' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                                      {panel.status === 'generating' ? 'Generating...' : 'Regenerate Image'}
                                     </button>
                                   )}
                                 </div>
@@ -500,7 +511,7 @@ const ComicViewer: React.FC<ComicViewerProps> = ({
                   })}
                 </div>
                 
-                {isReviewMode && onAddPanel && (
+                {showLayoutControls && onAddPanel && (
                   <button 
                     onClick={() => onAddPanel(pageIndex)}
                     className="w-full mt-4 py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-400 hover:border-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 transition-all flex items-center justify-center gap-2 font-bold"
